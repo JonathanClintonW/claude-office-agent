@@ -1,0 +1,51 @@
+/* Zero-extra-inference badge, right end of the nav row. Pixel style as .pill / .badge. */
+.inference-badge {
+  --c: var(--info);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 4px auto;
+  padding: 2px 8px;
+  font-family: var(--title);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text);
+  background: color-mix(in srgb, var(--c) 18%, #0b0c1a);
+  border: 2px solid var(--edge);
+  box-shadow:
+    inset 2px 2px 0 color-mix(in srgb, var(--c) 45%, transparent),
+    2px 2px 0 rgba(0, 0, 0, 0.35);
+  cursor: help;
+}
+.inference-badge .dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--c);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+}
+.inference-badge.tone-ok {
+  --c: var(--ok);
+}
+.inference-badge.tone-static {
+  --c: var(--info);
+  color: var(--muted);
+}
+.inference-badge.tone-warn {
+  --c: var(--warn);
+}
+.inference-badge.tone-bad {
+  --c: var(--bad);
+  color: #fff;
+  background: color-mix(in srgb, var(--bad) 35%, #0b0c1a);
+}
+.inference-badge.tone-bad .dot {
+  animation: blink 1s steps(2) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .inference-badge.tone-bad .dot {
+    animation: none;
+  }
+}

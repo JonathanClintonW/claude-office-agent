@@ -1,0 +1,42 @@
+{
+  "name": "agent-office",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first pixel-art office that visualizes real Claude Code sessions, subagents and teammates from lifecycle hooks.",
+  "license": "MIT",
+  "author": "JonathanClintonW",
+  "type": "module",
+  "workspaces": [
+    "packages/core",
+    "packages/monitor",
+    "packages/ui",
+    "packages/vscode-extension"
+  ],
+  "scripts": {
+    "build": "npm run build -w @agent-office/ui && npm run build -w @agent-office/monitor && npm run build -w agent-office-vscode",
+    "build:monitor": "npm run build -w @agent-office/monitor",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p packages/core --noEmit && tsc -p packages/monitor --noEmit && tsc -p packages/ui --noEmit && tsc -p packages/vscode-extension --noEmit",
+    "start": "node packages/monitor/dist/cli.cjs start",
+    "dev:ui": "npm run dev -w @agent-office/ui",
+    "package:vsix": "npm run build && npm run package -w agent-office-vscode",
+    "smoke:webview": "node scripts/smoke-webview.cjs",
+    "smoke:extension": "node scripts/smoke-extension.cjs",
+    "simulate": "node packages/monitor/dist/cli.cjs simulate",
+    "status": "node packages/monitor/dist/cli.cjs status",
+    "audit:publish": "node scripts/audit-publish.cjs",
+    "lint": "node scripts/lint.mjs",
+    "e2e:zero-token": "node scripts/e2e-zero-token.cjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "playwright-core": "^1.65.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

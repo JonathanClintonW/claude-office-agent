@@ -1,0 +1,27 @@
+{
+  "name": "@agent-office/monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local Claude Code activity monitor: hook ingestion, read-only discovery, WebSocket broadcast.",
+  "license": "MIT",
+  "author": "JonathanClintonW",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "agent-office": "./bin/agent-office.cjs"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@agent-office/core": "0.1.0",
+    "ws": "^8.23.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2"
+  }
+}

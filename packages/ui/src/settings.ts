@@ -1,0 +1,122 @@
+/**
+ * Office display settings. Local to the browser/webview; never sent to
+ * any model. Existing preferences (filters, showNames, idleLife, readNotices) keep their
+ * own storage keys and are untouched.
+ */
+import { useSyncExternalStore } from 'react';
+import { DEPARTMENT_KINDS, type DepartmentKind } from '@agent-office/core';
+
+/** Local, user-editable rule mapping agents to a department. A heuristic, not a verified Claude role. */
+export interface DepartmentRule {
+  id: string;
+  department: DepartmentKind;
+  /** Which real, observed field to match. */
+  field: 'agentType' | 'cwd' | 'name';
+  /** Case-insensitive substring. */
+  pattern: string;
+}
+
+export interface OfficeSettings {
+  /** Maximum render frame rate. */
+  animationFps: 15 | 30 | 60;
+  /** How often idle agents start simulated activities. */
+  idleFrequency: 'low' | 'normal' | 'high';
+  roomLabels: boolean;
+  minimap: boolean;
+  /** Fewer particles, no bobbing/flashing. Defaults to the OS preference. */
+  reduceMotion: boolean;
+  departmentRules: DepartmentRule[];
+}
+
+export const IDLE_FREQUENCY_MULTIPLIER: Record<OfficeSettings['idleFrequency'], number> = { low: 0.5, normal: 1, high: 2 };
+
+const KEY = 'agent-office:settings';
+
+function prefersReducedMotion(): boolean {
+  try {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+export function defaultSettings(): OfficeSettings {
+  return {
+    animationFps: 30,
+    idleFrequency: 'normal',
+    roomLabels: true,
+    minimap: true,
+    reduceMotion: prefersReducedMotion(),
+    departmentRules: [
+      { id: 'r-explore', department: 'research', field: 'agentType', pattern: 'explore' },
+      { id: 'r-plan', department: 'research', field: 'agentType', pattern: 'plan' },
+      { id: 'r-test', department: 'qa', field: 'agentType', pattern: 'test' },
+      { id: 'r-review', department: 'qa', field: 'agentType', pattern: 'review' },
+      { id: 'r-security', department: 'security', field: 'agentType', pattern: 'security' },
+      { id: 'r-devops', department: 'devops', field: 'agentType', pattern: 'devops' },
+      { id: 'r-deploy', department: 'devops', field: 'agentType', pattern: 'deploy' },
+    ],
+  };
+}
+
+function sanitize(raw: unknown): OfficeSettings {
+  const d = defaultSettings();
+  if (!raw || typeof raw !== 'object') return d;
+  const r = raw as Record<string, unknown>;
+  const rules = Array.isArray(r.departmentRules)
+    ? r.departmentRules
+        .filter(
+          (x): x is DepartmentRule =>
+            !!x &&
+            typeof x === 'object' &&
+            typeof (x as DepartmentRule).id === 'string' &&
+            DEPARTMENT_KINDS.includes((x as DepartmentRule).department) &&
+            ['agentType', 'cwd', 'name'].includes((x as DepartmentRule).field) &&
+            typeof (x as DepartmentRule).pattern === 'string',
+        )
+        .slice(0, 50)
+    : d.departmentRules;
+  return {
+    animationFps: r.animationFps === 15 || r.animationFps === 30 || r.animationFps === 60 ? r.animationFps : d.animationFps,
+    idleFrequency: r.idleFrequency === 'low' || r.idleFrequency === 'high' || r.idleFrequency === 'normal' ? r.idleFrequency : d.idleFrequency,
+    roomLabels: typeof r.roomLabels === 'boolean' ? r.roomLabels : d.roomLabels,
+    minimap: typeof r.minimap === 'boolean' ? r.minimap : d.minimap,
+    reduceMotion: typeof r.reduceMotion === 'boolean' ? r.reduceMotion : d.reduceMotion,
+    departmentRules: rules,
+  };
+}
+
+let current: OfficeSettings = (() => {
+  try {
+    const raw = localStorage.getItem(KEY);
+    return raw ? sanitize(JSON.parse(raw)) : defaultSettings();
+  } catch {
+    return defaultSettings();
+  }
+})();
+const listeners = new Set<() => void>();
+
+export function getSettings(): OfficeSettings {
+  return current;
+}
+
+export function updateSettings(patch: Partial<OfficeSettings>): void {
+  current = sanitize({ ...current, ...patch });
+  try {
+    localStorage.setItem(KEY, JSON.stringify(current));
+  } catch {
+    /* storage unavailable (some webviews) */
+  }
+  for (const l of listeners) l();
+}
+
+export function useSettings(): [OfficeSettings, (patch: Partial<OfficeSettings>) => void] {
+  const s = useSyncExternalStore(
+    (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
+    },
+    () => current,
+  );
+  return [s, updateSettings];
+}

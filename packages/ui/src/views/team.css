@@ -1,0 +1,307 @@
+/* Team view: real collaboration graph and members, real event feed, office simulation note. */
+.team-page {
+  max-width: 1100px;
+}
+.team-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 6px 0 2px;
+}
+.team-legend {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+}
+.team-line {
+  display: inline-block;
+  width: 22px;
+  height: 0;
+  border-top: 2px solid var(--muted);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.team-line:first-child {
+  margin-left: 0;
+}
+.team-line.dashed {
+  border-top-style: dashed;
+  border-top-color: #d2a8ff;
+}
+.team-line.handoff {
+  border-top-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- tags */
+.team-tag {
+  display: inline-block;
+  font-family: var(--title);
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border: 2px solid var(--edge);
+  background: #0b0c1a;
+  color: var(--muted);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.team-tag.real {
+  color: var(--ok);
+  border-color: #2f6b3c;
+}
+.team-tag.sim {
+  color: #1a1424;
+  background: #c9a7ff;
+}
+.team-tag.verified {
+  color: var(--ok);
+}
+.team-tag.inferred {
+  color: #d2a8ff;
+  border-style: dashed;
+  border-color: #5a3f86;
+}
+.team-tag.handoff {
+  color: #1a1424;
+  background: var(--accent);
+}
+.team-tag.parallel {
+  color: var(--info);
+  border-color: #245a7a;
+}
+.page h3 .team-tag {
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- team cards */
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.team-card.ended {
+  opacity: 0.75;
+}
+.team-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 6px;
+}
+.team-head > .link {
+  font-family: var(--title);
+  font-size: 12px;
+}
+.team-graph-wrap {
+  overflow-x: auto;
+  background: #14162c;
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 #000;
+  padding: 4px;
+}
+.team-graph {
+  display: block;
+  font-family: var(--pixel);
+}
+.team-node {
+  cursor: pointer;
+  outline: none;
+}
+.team-node-box {
+  fill: var(--panel-3);
+  stroke: var(--edge);
+  stroke-width: 2;
+}
+.team-node:hover .team-node-box {
+  fill: #3b4175;
+}
+.team-node:focus-visible .team-node-box {
+  stroke: var(--accent);
+}
+.team-node.kind-subagent .team-node-box {
+  fill: #2e2a52;
+}
+.team-node.kind-teammate .team-node-box {
+  fill: #22404a;
+}
+.team-node-name {
+  fill: var(--text);
+  font-size: 11px;
+}
+.team-node-sub {
+  fill: var(--muted);
+  font-family: var(--title);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.team-node-flag {
+  fill: var(--info);
+  font-size: 12px;
+}
+.team-edge {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+.team-edge.inferred {
+  stroke: #d2a8ff;
+}
+.team-arrow {
+  fill: var(--muted);
+}
+.team-arrow.handoff {
+  fill: var(--accent);
+}
+.team-handoff {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.team-edge-label {
+  fill: var(--muted);
+  font-family: var(--title);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.team-edge-label.inferred {
+  fill: #d2a8ff;
+}
+.team-edge-label.handoff {
+  fill: var(--accent);
+}
+.team-notes {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  color: var(--muted);
+}
+.team-notes li {
+  margin: 2px 0;
+}
+.team-dash {
+  display: inline-block;
+  width: 16px;
+  border-top: 2px dashed #d2a8ff;
+  vertical-align: middle;
+}
+.team-members-wrap {
+  overflow-x: auto;
+  margin-top: 6px;
+}
+.team-members {
+  width: 100%;
+  border-collapse: collapse;
+}
+.team-members th {
+  text-align: left;
+  font-family: var(--title);
+  font-size: 9px;
+  font-weight: normal;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 2px 6px;
+  border-bottom: 2px solid var(--edge);
+}
+.team-members td {
+  padding: 3px 6px;
+  vertical-align: middle;
+  border-bottom: 1px dashed var(--line);
+}
+.team-members tr.inferred td:first-child {
+  border-left: 2px dashed #d2a8ff;
+}
+.team-members .team-tag {
+  margin-left: 4px;
+}
+.team-indent {
+  display: inline-block;
+  width: calc(var(--depth, 0) * 12px);
+}
+.team-evidence {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.team-tasks {
+  margin-top: 8px;
+}
+.team-tasks ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.team-task {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.team-task-subject {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.team-solo {
+  margin: 8px 0 0;
+}
+
+/* ---------------------------------------------------------------- feed */
+.team-feed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.team-feed-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 4px 6px;
+  border-bottom: 1px dashed var(--line);
+}
+.team-feed-row:nth-child(odd) {
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+}
+.team-feed-time {
+  min-width: 64px;
+}
+.team-feed-label {
+  font-family: var(--title);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.team-feed-subject {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+.team-live {
+  margin: 4px 0;
+}
+.team-anim {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------- simulation */
+.team-sim {
+  margin-top: 12px;
+  padding: 2px 10px 8px;
+  border: 2px dashed #5a3f86;
+  background: color-mix(in srgb, #2a1f45 55%, transparent);
+}
+.team-sim-kinds {
+  margin: 2px 0 6px;
+  padding-left: 18px;
+}
+.team-sim-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+}

@@ -1,0 +1,73 @@
+/* Navigation row and dashboard page frame. Each view keeps its own styles in its own CSS file. */
+.navrow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.navtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+.navtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 3px solid var(--edge);
+  border-bottom: none;
+  box-shadow: inset 3px 3px 0 var(--bevel-hi);
+  padding: 4px 12px 3px;
+  cursor: pointer;
+  font-family: var(--title);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.navtab:hover {
+  color: var(--text);
+}
+.navtab.active {
+  background: var(--accent);
+  color: #1a1424;
+  box-shadow: inset 3px 3px 0 #fff0c2;
+}
+.stage-page {
+  min-height: 0;
+  overflow: auto;
+  background: var(--panel);
+  border: var(--px) solid var(--edge);
+  box-shadow:
+    inset var(--px) var(--px) 0 var(--bevel-hi),
+    inset calc(var(--px) * -1) calc(var(--px) * -1) 0 var(--bevel-lo);
+}
+.office[hidden] {
+  display: none;
+}
+.page {
+  padding: 14px 16px 24px;
+}
+.page > h2 {
+  margin: 0 0 8px;
+  font-family: var(--title);
+  font-size: 15px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 2px 2px 0 var(--edge);
+}
+.page h3 {
+  font-family: var(--title);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 18px 0 6px;
+}
+.settings-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  margin: 10px 0;
+}

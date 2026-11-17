@@ -1,0 +1,177 @@
+/* Office view: camera canvas, camera controls, mini-map, room card; layout editor and department rules extras. */
+
+.office-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The canvas fills the whole view; the camera moves the office inside it. */
+.office-canvas.office-camera {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+  overflow: hidden;
+  cursor: grab;
+}
+.office-canvas.office-camera:active {
+  cursor: grabbing;
+}
+.office-canvas.office-camera:focus {
+  outline: none;
+}
+.office-canvas.office-camera:focus-visible {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+}
+.office-canvas.office-camera canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.cam-controls,
+.minimap,
+.room-card {
+  position: absolute;
+  z-index: 2;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 2px solid var(--edge);
+  box-shadow:
+    inset 2px 2px 0 var(--bevel-hi),
+    inset -2px -2px 0 var(--bevel-lo);
+}
+
+.cam-controls {
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+.cam-zoom {
+  min-width: 34px;
+  text-align: center;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.minimap {
+  right: 8px;
+  bottom: 8px;
+  padding: 4px;
+  line-height: 0;
+}
+.minimap svg {
+  display: block;
+  cursor: crosshair;
+  image-rendering: pixelated;
+}
+
+.room-card {
+  top: 8px;
+  left: 8px;
+  width: 260px;
+  max-width: calc(100% - 16px);
+  padding: 8px 10px;
+}
+.room-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.room-card-head strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+}
+.room-card p {
+  margin: 6px 0 0;
+}
+.room-occupants {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 160px;
+  overflow: auto;
+}
+.room-occupants li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+/* ---------------------------------------------------------------- layout editor */
+.tool-group .tool-group-title {
+  margin: 10px 0 0;
+}
+.tool-group .tool-grid {
+  margin: 6px 0;
+}
+.room-edit select {
+  background: #0b0c1a;
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 #000;
+  padding: 3px 6px;
+}
+
+/* ---------------------------------------------------------------- department rules */
+.dept-rules .dept-note {
+  max-width: 720px;
+}
+.dept-rule-list {
+  margin: 8px 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dept-rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.dept-rule select,
+.dept-probe select {
+  background: #0b0c1a;
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 #000;
+  padding: 3px 6px;
+}
+.dept-rule input.text {
+  width: 160px;
+}
+
+/* Legend for simulated speech (idle life / meetings): local template lines, not agent output. */
+.sim-legend {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 200px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  color: var(--muted, #b9b2cc);
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  border: 2px solid var(--edge);
+  pointer-events: auto;
+}
+.sim-legend-swatch {
+  flex: none;
+  width: 14px;
+  height: 10px;
+  background: #f1ecff;
+  border: 2px dashed #6b5fa8;
+}

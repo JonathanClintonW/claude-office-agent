@@ -1,0 +1,13 @@
+# Allowlist: package only the bundles, the built UI (with its font licences), the manifest,
+# the README and licence/notice files. Sources, tests, scripts and tsconfig never ship.
+# vsce applies every "!" pattern after all ignore patterns, so keep the list explicit.
+**
+!dist/extension.cjs
+!dist/agent-office-hook.cjs
+!media/**
+!package.json
+!README.md
+!LICENSE
+!LICENSE.md
+!LICENSE.txt
+!THIRD_PARTY_NOTICES.md

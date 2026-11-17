@@ -1,0 +1,285 @@
+/* Inspector additions, task board details, Errors and Git views. */
+
+/* ---------------------------------------------------------------- shared bits */
+.dash-heur {
+  display: inline-block;
+  font-family: var(--title);
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 0 5px;
+  border: 2px dashed var(--info);
+  color: var(--info);
+  cursor: help;
+  white-space: nowrap;
+}
+.dash-tag {
+  display: inline-block;
+  font-family: var(--title);
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 0 5px;
+  border: 2px solid var(--line);
+  color: var(--muted);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.dash-tag.warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.dash-mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+.dash-mini-list > li {
+  padding: 3px 0;
+  border-bottom: 2px solid #12142a;
+  overflow-wrap: anywhere;
+}
+.dash-mini-list > li:last-child {
+  border-bottom: none;
+}
+.dash-gap {
+  margin-top: 10px;
+}
+.dash-page-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dash-page-head h2 {
+  margin: 0;
+  flex: 1;
+  font-family: var(--title);
+  font-size: 15px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 2px 2px 0 var(--edge);
+}
+
+/* ---------------------------------------------------------------- inspector */
+.dash-readonly {
+  margin: 14px 0 0;
+  padding: 6px 8px;
+  border: 2px dashed var(--line);
+  color: var(--muted);
+}
+.dash-readonly strong {
+  color: var(--text);
+}
+.dash-nav-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.dash-recent-errors .dash-err-failed strong {
+  color: var(--bad);
+}
+.dash-recent-errors .dash-err-denied strong {
+  color: var(--warn);
+}
+.dash-recent-errors .dash-err-interrupted strong {
+  color: var(--muted);
+}
+.dash-git-compact .facts {
+  margin-bottom: 6px;
+}
+
+/* ---------------------------------------------------------------- task board */
+.dash-task-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0 8px;
+  margin: 2px 0 0;
+}
+.dash-task-facts dt {
+  color: #6b6278;
+}
+.dash-task-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.task-card .dash-heur {
+  border-color: #3d6fb3;
+  color: #2a4f86;
+}
+.task-card .dash-heur.dash-sub-blocked {
+  border-color: #c76a00;
+  color: #8a4a00;
+}
+.task-card .dash-heur.dash-sub-waiting {
+  border-color: #a68a00;
+  color: #6e5c00;
+}
+
+/* ---------------------------------------------------------------- errors view */
+.dash-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0 6px;
+}
+.dash-count {
+  background: var(--panel-2);
+  border: 3px solid var(--edge);
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 13px;
+}
+.dash-count b {
+  font-size: 16px;
+  margin-right: 4px;
+}
+.dash-count.sev-error b {
+  color: var(--bad);
+}
+.dash-count.sev-warning b {
+  color: var(--warn);
+}
+.dash-count.sev-info b {
+  color: var(--info);
+}
+.dash-count.active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.dash-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  margin: 6px 0 12px;
+}
+.dash-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dash-issue {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: var(--panel-2);
+  border-left: 5px solid var(--line);
+  padding: 6px 10px;
+}
+.dash-issue.sev-error {
+  border-left-color: var(--bad);
+}
+.dash-issue.sev-warning {
+  border-left-color: var(--warn);
+}
+.dash-issue.sev-info {
+  border-left-color: var(--info);
+}
+.dash-issue-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--title);
+  font-size: 11px;
+  border: 2px solid var(--edge);
+  background: var(--line);
+}
+.dash-issue.sev-error .dash-issue-icon {
+  background: var(--bad);
+  color: #1a1424;
+}
+.dash-issue.sev-warning .dash-issue-icon {
+  background: var(--warn);
+  color: #1a1424;
+}
+.dash-issue.sev-info .dash-issue-icon {
+  background: var(--info);
+  color: #1a1424;
+}
+.dash-issue-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dash-issue-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.dash-issue-detail {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- git view */
+.dash-repos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+@media (max-width: 760px) {
+  .dash-repos {
+    grid-template-columns: 1fr;
+  }
+}
+.dash-repo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.dash-repo-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.dash-repo-head h3 {
+  margin: 0;
+  font-family: var(--title);
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.dash-repo-head code {
+  overflow-wrap: anywhere;
+}
+.dash-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.dash-branch-name {
+  font-family: var(--mono);
+  color: var(--ok);
+}
+.dash-files summary {
+  cursor: pointer;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.dash-code {
+  font-family: var(--mono);
+  color: var(--warn);
+}
+.dash-conflicts {
+  border: 2px dashed var(--warn);
+  padding: 4px 8px;
+  margin-top: 4px;
+}
+.dash-commits code {
+  color: var(--info);
+}

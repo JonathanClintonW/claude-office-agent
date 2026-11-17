@@ -1,0 +1,529 @@
+/* Agent Office: retro pixel game skin. Fonts are bundled (OFL), nothing loads from the network. */
+:root {
+  --bg: #0e0f1d;
+  --panel: #1b1d36;
+  --panel-2: #262a4d;
+  --panel-3: #30355f;
+  --edge: #06060d;
+  --bevel-hi: #4a51a0;
+  --bevel-lo: #10122a;
+  --line: #3a3f73;
+  --text: #f1eedf;
+  --muted: #a6a9cc;
+  --accent: #ffd166;
+  --ok: #7ee787;
+  --warn: #ffb057;
+  --bad: #ff6b6b;
+  --info: #5ad1ff;
+  --pixel: 'Pixelify Sans', 'Silkscreen', 'Cascadia Mono', Consolas, monospace;
+  --title: 'Silkscreen', 'Pixelify Sans', monospace;
+  --mono: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  --px: 3px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.35 var(--pixel);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: #11132a;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+}
+
+::selection {
+  background: var(--accent);
+  color: #1a1424;
+}
+
+/* pixel scrollbars */
+* {
+  scrollbar-color: var(--bevel-hi) var(--bevel-lo);
+}
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bevel-lo);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--panel-3);
+  border: 3px solid var(--bevel-lo);
+  box-shadow: inset 2px 2px 0 var(--bevel-hi);
+}
+
+.muted {
+  color: var(--muted);
+}
+.nowrap {
+  white-space: nowrap;
+}
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* 8-bit bevelled box used by panels, cards, buttons */
+.bevel,
+.topbar,
+.sidebar,
+.modal,
+.toast,
+.card,
+.btn,
+.office-frame {
+  border: var(--px) solid var(--edge);
+  box-shadow:
+    inset var(--px) var(--px) 0 var(--bevel-hi),
+    inset calc(var(--px) * -1) calc(var(--px) * -1) 0 var(--bevel-lo);
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 6px;
+  gap: 6px;
+  background:
+    repeating-conic-gradient(#121329 0 25%, #0f1022 0 50%) 0 0 / 16px 16px;
+}
+
+/* ---------------------------------------------------------------- HUD */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 8px 12px;
+  background: linear-gradient(#2a2f5a, #1c1f3c);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo {
+  width: 22px;
+  height: 22px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) 6px 6px / 10px 10px no-repeat,
+    #3a2f1a;
+  border: 3px solid var(--edge);
+  box-shadow: inset 2px 2px 0 #ffe9a8;
+}
+.title {
+  font-family: var(--title);
+  font-size: 17px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-shadow: 2px 2px 0 #7a4b12, 3px 3px 0 var(--edge);
+  text-transform: uppercase;
+}
+.hud-clock {
+  font-family: var(--title);
+  font-size: 12px;
+  color: var(--info);
+  background: #0b0c1a;
+  border: 2px solid var(--edge);
+  padding: 1px 6px;
+}
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--title);
+  font-size: 11px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  background: #0b0c1a;
+  border: 2px solid var(--edge);
+}
+.conn .dot,
+.count .dot,
+.pill .dot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  background: var(--c, var(--muted));
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.35);
+}
+.conn.ok .dot {
+  background: var(--ok);
+  animation: blink 1.2s steps(2) infinite;
+}
+.conn.warn .dot {
+  background: var(--warn);
+}
+.conn.bad .dot {
+  background: var(--bad);
+}
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 2px 8px;
+  background: #11132a;
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 color-mix(in srgb, var(--c) 35%, transparent);
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.ctl select,
+.num-field input,
+input.text {
+  background: #0b0c1a;
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 #000;
+  padding: 3px 6px;
+  max-width: 220px;
+  border-radius: 0;
+}
+.ctl.check input {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #0b0c1a;
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 #000;
+  margin: 0;
+  cursor: pointer;
+}
+.ctl.check input:checked {
+  background:
+    linear-gradient(var(--ok), var(--ok)) 3px 3px / 6px 6px no-repeat,
+    #0b0c1a;
+}
+
+.btn {
+  background: var(--panel-3);
+  padding: 3px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 0;
+  font-size: 14px;
+  text-shadow: 1px 1px 0 var(--edge);
+}
+.btn:hover {
+  background: #3a4074;
+}
+.btn:active,
+.btn.active {
+  box-shadow:
+    inset var(--px) var(--px) 0 var(--bevel-lo),
+    inset calc(var(--px) * -1) calc(var(--px) * -1) 0 var(--bevel-hi);
+  transform: translateY(1px);
+}
+.btn.active {
+  background: #4a3f1c;
+  color: var(--accent);
+}
+.btn.primary {
+  background: #2d6a3a;
+}
+.btn.primary:hover {
+  background: #36804a;
+}
+.btn.danger {
+  background: #6a2d2d;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+.btn.icon {
+  padding: 1px 8px;
+}
+.btn.small {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+.num {
+  background: var(--info);
+  color: #0b0c1a;
+  padding: 0 5px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 2px solid var(--edge);
+}
+.num.alert {
+  background: var(--bad);
+  color: #fff;
+  animation: blink 1s steps(2) infinite;
+}
+.link {
+  background: none;
+  border: none;
+  color: var(--info);
+  text-decoration: underline dotted;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ---------------------------------------------------------------- banners */
+.banner {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: var(--px) solid var(--edge);
+}
+.banner.info {
+  background: #1a2a4f;
+}
+.banner.warn {
+  background: #4a3a18;
+}
+.banner.bad {
+  background: #4a1d24;
+}
+
+/* ---------------------------------------------------------------- layout */
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 6px;
+  min-height: 0;
+}
+.office {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: var(--px) solid var(--edge);
+  background: radial-gradient(ellipse at center, #1b1d3a 0%, #0c0d1c 80%);
+  box-shadow:
+    inset var(--px) var(--px) 0 #2b2f5c,
+    inset calc(var(--px) * -1) calc(var(--px) * -1) 0 #07070f;
+}
+.office.offline .office-canvas {
+  filter: grayscale(0.85) brightness(0.65);
+}
+.office-canvas {
+  flex: 1;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.office-canvas canvas {
+  display: block;
+  image-rendering: pixelated;
+  border: 4px solid #2a1c14;
+  box-shadow:
+    0 0 0 3px var(--edge),
+    8px 8px 0 3px rgba(0, 0, 0, 0.45);
+}
+.sidebar {
+  background: var(--panel);
+  overflow: auto;
+  min-height: 0;
+}
+
+@media (max-width: 960px) {
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(260px, 55vh) 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------- portraits */
+.portrait {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex: none;
+  background:
+    linear-gradient(#d8c9a8 0 55%, #9a7351 55%) border-box;
+  border: 3px solid var(--edge);
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+}
+.portrait img {
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* ---------------------------------------------------------------- agent list */
+.agent-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.agent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: var(--panel-2);
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 #343a6c;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+.agent-row:hover {
+  background: #2f3460;
+}
+.agent-row.selected {
+  background: #3d3720;
+  box-shadow:
+    inset 2px 2px 0 #7a6a2a,
+    0 0 0 2px var(--accent);
+}
+.agent-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.agent-row-top,
+.agent-row-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.agent-row-sub {
+  font-size: 12px;
+}
+.agent-row-sub .ellipsis {
+  flex: 1;
+}
+.agent-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--title);
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--c) 22%, #0b0c1a);
+  border: 2px solid var(--edge);
+  box-shadow: inset 2px 2px 0 color-mix(in srgb, var(--c) 45%, transparent);
+  white-space: nowrap;
+}
+.status-waiting_permission,
+.status-waiting_input {
+  animation: blink 1s steps(2) infinite;
+}
+.stale-tag {
+  color: var(--muted);
+}
+.badge {
+  font-family: var(--title);
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  background: #0b0c1a;
+  color: var(--muted);
+  border: 2px solid var(--edge);
+  white-space: nowrap;
+}
+.badge.kind-subagent {
+  color: #d2a8ff;
+}
+.badge.kind-teammate {
+  color: #7fe9e9;
+}
+.badge.sim {
+  color: #1a1424;
+  background: var(--accent);
+}
+.source {
+  font-family: var(--title);
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border: 2px dashed var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.source-hook {
+  color: var(--ok);
+  border-color: #2f6b3c;
+}
+.source-registry {
+  color: var(--info);
+  border-color: #245a7a;
+}
+.source-transcript {
+  color: #d2a8ff;
+  border-color: #5a3f86;
+}
+.empty {
+  padding: 24px 16px;
+  text-align: center;
+}
+.fatal {
+  padding: 40px;
+  max-width: 640px;
+  margin: auto;
+}

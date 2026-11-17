@@ -1,0 +1,92 @@
+{
+  "name": "agent-office-vscode",
+  "displayName": "Agent Office for Claude Code",
+  "description": "Pixel-art office that visualizes your real Claude Code sessions, subagents and teammates. Local only, read-only.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "private": true,
+  "license": "MIT",
+  "author": "JonathanClintonW",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package": "vsce package --no-dependencies --skip-license --allow-missing-repository --out agent-office.vsix"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentOffice.open",
+        "title": "Agent Office: Open Office",
+        "icon": "$(organization)"
+      },
+      {
+        "command": "agentOffice.installHooks",
+        "title": "Agent Office: Install Claude Code Hooks…"
+      },
+      {
+        "command": "agentOffice.uninstallHooks",
+        "title": "Agent Office: Remove Claude Code Hooks…"
+      },
+      {
+        "command": "agentOffice.restartMonitor",
+        "title": "Agent Office: Restart Monitor"
+      },
+      {
+        "command": "agentOffice.showLog",
+        "title": "Agent Office: Show Monitor Log"
+      }
+    ],
+    "configuration": {
+      "title": "Agent Office",
+      "properties": {
+        "agentOffice.port": {
+          "type": "number",
+          "default": 47821,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Loopback port of the local monitor (127.0.0.1 only)."
+        },
+        "agentOffice.autoStartMonitor": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start the monitor inside VS Code when no monitor is already running."
+        },
+        "agentOffice.claudeConfigDirs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Additional Claude configuration directories to watch (the default ~/.claude and CLAUDE_CONFIG_DIR are always included)."
+        },
+        "agentOffice.showOnlyCurrentWorkspace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Initially show only agents whose working directory is inside this window's workspace folders."
+        },
+        "agentOffice.nativeNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show VS Code notifications when an agent needs permission or input, or a turn fails."
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@agent-office/core": "0.1.0",
+    "@agent-office/monitor": "0.1.0",
+    "@types/vscode": "1.95.0",
+    "@vscode/vsce": "^4.1.1",
+    "ws": "^8.23.0"
+  }
+}
