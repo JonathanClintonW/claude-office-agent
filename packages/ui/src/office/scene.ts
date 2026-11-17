@@ -248,7 +248,14 @@ const CELEBRATE_MS = 3_500;
 const LABEL_FONT = '"Pixelify Sans", "Silkscreen", Consolas, monospace';
 const BOTTOM_WALL = 6;
 
+/** How dark it is; drives the strength of lamp, screen and prop glows. */
 const DARKNESS: Record<Sky, number> = { day: 0, dawn: 0.2, dusk: 0.28, night: 0.48 };
+/**
+ * Ambient light, multiplied over the room. Multiplying scales each colour channel instead of
+ * mixing in a flat dark wash, so the office keeps its colours after dark rather than turning
+ * a muddy near-greyscale. The cool night tint still reads as night.
+ */
+const AMBIENT: Record<Sky, number> = { day: 0xffffff, dawn: 0xf2ded2, dusk: 0xdcc8d8, night: 0x9ca8d8 };
 const SCREEN_LIGHT: Partial<Record<ScreenKind, number>> = {
   code: 0x5aa9ff,
   think: 0x5aa9ff,
@@ -417,7 +424,8 @@ export class OfficeScene {
     // non-interactive sprite that is hit would swallow clicks meant for workers below it.
     for (const l of [this.frameLayer, this.zoneLayer, this.shadowLayer, this.darkness, this.lightLayer, this.fxLayer, this.editLayer, this.overlay]) l.eventMode = 'none';
     this.fxLayer.addChild(this.fx);
-    this.root.addChild(this.frameLayer, this.floorLayer, this.zoneLayer, this.wallLayer, this.shadowLayer, this.items, this.darkness, this.lightLayer, this.fxLayer, this.editLayer);
+    this.darkness.blendMode = 'multiply';
+    this.root.addChild(this.frameLayer,this.floorLayer, this.zoneLayer, this.wallLayer, this.shadowLayer, this.items, this.darkness, this.lightLayer, this.fxLayer, this.editLayer);
     // The backdrop (whole view, behind the office) lets the camera be dragged from the margins.
     this.app.stage.addChild(this.backdrop, this.root, this.overlay);
     this.overlay.sortableChildren = true;
@@ -1089,7 +1097,7 @@ export class OfficeScene {
     const L = this.layout;
     const dark = DARKNESS[this.sky];
     this.darkness.clear();
-    if (dark > 0) this.darkness.rect(0, 0, L.cols * TILE, L.rows * TILE + BOTTOM_WALL).fill({ color: 0x0b1030, alpha: dark });
+    if (dark > 0) this.darkness.rect(0, 0, L.cols * TILE, L.rows * TILE + BOTTOM_WALL).fill({ color: AMBIENT[this.sky] });
     const lampsOn = this.sky === 'night' || this.sky === 'dusk';
     for (const l of this.lamps) {
       l.sprite.texture = this.t(lampsOn ? 'lamp1' : 'lamp0', () => drawLamp(lampsOn));
