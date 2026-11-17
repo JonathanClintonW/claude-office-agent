@@ -28,6 +28,7 @@ It only watches. It never sends prompts, never answers permission requests and n
 - [Subagents and agent teams](#subagents-and-agent-teams)
 - [Meetings and collaboration](#meetings-and-collaboration)
 - [Simulated office life](#simulated-office-life)
+- [Sound](#sound)
 - [Token usage](#token-usage)
 - [Dashboard views](#dashboard-views)
 - [Configuration](#configuration)
@@ -48,7 +49,8 @@ It only watches. It never sends prompts, never answers permission requests and n
 | **Subagents and teams** | Subagents (including nested ones) and teammates get a desk in their department or next to their lead. Verified delegations, task handoffs and completions are animated between desks. |
 | **Inspector** | Click a worker for its current tool, pending permission, tool history, tasks, timing, recent errors, git status and the context size recorded in its transcript. |
 | **Dashboard** | Tasks, Errors, Git, Analytics, History (with replay), Team and Settings views. |
-| **Simulated office life** | Idle agents chat, fetch coffee, read, stretch and meet. It is cosmetic, clearly labelled, and real status always wins. |
+| **Simulated office life** | Idle agents chat, fetch coffee, read, stretch and meet, and simulated visitors drop by. It is cosmetic, clearly labelled, and real status always wins. |
+| **Sound** | Optional calm lo-fi music and sound effects for real events (an agent arrives, finishes, needs permission, fails), all synthesized in the page with no audio files. Off by default. |
 | **VS Code extension** | The same office in a VS Code panel, a status-bar summary, notifications and hook install commands. |
 | **Private by design** | Binds to `127.0.0.1` only, drops prompts and tool output in the hook process, keeps only short redacted summaries of tool inputs, and never calls a model. |
 
@@ -205,6 +207,7 @@ Details: [docs/COLLABORATION.md](docs/COLLABORATION.md).
 Agents whose **real** status is idle get a small, local, simulated life: coffee, water, snacks, the restroom (its door sign turns red), the couch, a window, books, the notice board or whiteboard, watering plants, stretching, short walks, chats with another idle agent, and meetings.
 
 - **Clearly simulated.** Chat lines appear in **dashed lavender bubbles** and come from a fixed table of local template lines, chosen by rules over generic observed facts ("just finished", "a test failed recently"). They are never generated, never real agent output, and the office shows a legend saying so. The full vocabulary is listed in [docs/SIMULATION.md](docs/SIMULATION.md).
+- **Visitors.** People with a lavender visitor badge come in through the door, check in at reception, look around the rooms, get a coffee, use the restroom, chat with each other and leave again, so the office is alive even when no agent is idle. They are never agents: they cannot be selected, they are not counted anywhere, and they step aside when an agent needs their spot. Turn them off under **Settings → Simulated visitors**.
 - **Real status wins.** Agents that are working, waiting, failed or unknown never leave their desk. When real work, a permission prompt or a question arrives, the agent hurries back. The desk monitor and the inspector keep showing the real status while an agent is away, and at most about half of the idle agents are away at once.
 - **Your choice.** Toggle **Idle life** in the top bar and set its frequency under **Settings**. The simulation pauses while another view is open.
 
@@ -218,6 +221,10 @@ Agents whose **real** status is idle get a small, local, simulated life: coffee,
 <td><sub>A simulated coffee break.</sub></td>
 </tr>
 </table>
+
+## Sound
+
+Turn on **Sound** in the top bar for calm background music and sound effects. Effects follow real events (an agent walks in, finishes a turn, needs permission or an answer, fails) and, more quietly, the office animation (coffee, the restroom, small talk, visitors). A soft keyboard ambience follows the agents that are really typing. Everything is synthesized in the page with the Web Audio API: no audio files, nothing downloaded. Music, effects and volume are under **Settings**. See [docs/SOUND.md](docs/SOUND.md).
 
 ## Token usage
 

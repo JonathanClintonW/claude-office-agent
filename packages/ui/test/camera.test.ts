@@ -234,6 +234,8 @@ vi.mock('../src/office/scene', () => {
     setShowNames = record('setShowNames');
     setEditMode = record('setEditMode');
     setIdleLife = record('setIdleLife');
+    setVisitors = record('setVisitors');
+    setSound = record('setSound');
     setOpenTasks = record('setOpenTasks');
     setHourOverride = record('setHourOverride');
     setAnimationFps = record('setAnimationFps');
@@ -251,8 +253,21 @@ vi.mock('../src/office/scene', () => {
     centerOnTile = record('centerOnTile');
     getZoom = () => 2;
     minimapState = () => ({ zoom: 2, view: { x: 0, y: 0, w: 10, h: 8 }, workers: [{ key: 'a', x: 3, y: 4, status: 'idle', selected: false }] });
-    roomOccupants = () => [{ key: 'a', name: 'Alice', status: 'working', simulated: false }];
+    roomOccupants = (id: string) =>
+      id === 'meeting'
+        ? [
+            { key: 'b', name: 'Bob', status: 'idle', simulated: false, inMeeting: true },
+            { key: 'c', name: 'Cy', status: 'idle', simulated: false },
+          ]
+        : [{ key: 'a', name: 'Alice', status: 'working', simulated: false }];
     roomDesks = () => ({ desks: 12, assigned: 3 });
+    roomMeeting = (id: string) =>
+      id === 'meeting'
+        ? { who: 'agents', kind: 'meeting', phase: 'meeting', people: 2, endsAt: Date.now() + 3 * 60_000 }
+        : id === 'huddle'
+          ? { who: 'visitors', kind: 'meeting', phase: 'gathering', people: 3 }
+          : undefined;
+    startVisitorMeeting = record('startVisitorMeeting', 'ok');
   }
   return { OfficeScene: FakeScene };
 });
@@ -286,6 +301,7 @@ describe('OfficeView', () => {
     expect(called('setReduceMotion')).toEqual([[true]]);
     expect(called('setRoomLabels')).toEqual([[false]]);
     expect(called('setIdleFrequency')).toEqual([[2]]);
+    expect(called('setVisitors')).toEqual([[true]]);
     expect(called('setDepartmentRules')).toHaveLength(1);
     fireEvent.click(screen.getByLabelText('Zoom in'));
     fireEvent.click(screen.getByLabelText('Zoom out'));
@@ -326,6 +342,26 @@ describe('OfficeView', () => {
       expect(called('centerOnTile').at(-1)).toEqual([22, 0]);
       await act(async () => sceneMock.callbacks!.onRoomClick!('corridor'));
       expect(screen.getByRole('dialog').textContent).not.toMatch(/Claude role/); // not a department
+      expect(screen.getByRole('dialog').textContent).not.toMatch(/simulated/); // no meeting here
+      // a room with a simulated meeting says so, labelled as simulated, and marks who is in it
+      await act(async () => sceneMock.callbacks!.onRoomClick!('meeting'));
+      const meeting = screen.getByRole('dialog').textContent ?? '';
+      expect(meeting).toContain('simulated');
+      expect(meeting).toMatch(/Meeting · in progress · 2 agents · about 3 min left/);
+      expect(meeting).toMatch(/Bob\s*in the meeting · Idle/);
+      expect(meeting).not.toMatch(/Cy\s*in the meeting/);
+      expect(within(screen.getByRole('dialog')).queryByText('Hold a simulated meeting here')).toBeNull(); // one is on
+      // visitors meeting: said so, counted as visitors, never as agents
+      await act(async () => sceneMock.callbacks!.onRoomClick!('huddle'));
+      expect(screen.getByRole('dialog').textContent).toMatch(/simulated\s*Visitor meeting · gathering · 3 visitors/);
+      // a free meeting room offers to bring visitors in for a meeting
+      await act(async () => sceneMock.callbacks!.onRoomClick!('break'));
+      fireEvent.click(within(screen.getByRole('dialog')).getByText('Hold a simulated meeting here'));
+      expect(called('startVisitorMeeting')).toEqual([['break']]);
+      expect(screen.getByRole('dialog').textContent).toContain('Visitors are on their way.');
+      // not offered in rooms that are not for meetings
+      await act(async () => sceneMock.callbacks!.onRoomClick!('qa'));
+      expect(within(screen.getByRole('dialog')).queryByText('Hold a simulated meeting here')).toBeNull();
     } finally {
       if (parent) Object.defineProperty(HTMLElement.prototype, 'offsetParent', parent);
     }

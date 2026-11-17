@@ -195,7 +195,7 @@ function signature(w: LifeWorld): string {
 }
 
 /** Glance sequence while standing somewhere for a walk or stroll: ahead, aside, ahead, the other side. */
-function lookAround(face: Face, seed: number, t: number): Face {
+export function lookAround(face: Face, seed: number, t: number): Face {
   const sides: readonly Face[] = face === 'up' || face === 'down' ? (seed < 0.5 ? ['left', 'right'] : ['right', 'left']) : ['down', face === 'left' ? 'right' : 'left'];
   const step = Math.floor(t / LOOK_MS) % 4;
   return step === 1 ? sides[0]! : step === 3 ? sides[1]! : face;

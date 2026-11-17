@@ -1,6 +1,6 @@
 /**
- * Layout → behavior world: interactive spots, chat tiles, rooms, lounge seats and room
- * doorways. Pure: no rendering, no randomness. Only tiles reachable on foot from the door are
+ * Layout → behavior world: interactive spots, chat tiles, rooms, lounge seats, room doorways
+ * and reception counters. Pure: no rendering, no randomness. Only tiles reachable on foot from the door are
  * used. Tiles that one provider walks workers to never double as another provider's tiles:
  * spots and chat tiles stay off meeting seats and presenter spots.
  */
@@ -53,10 +53,19 @@ export interface Doorway {
   face: Face;
 }
 
-/** The behavior world plus the extras this module derives (lounge seats and doorways). */
+/** Where someone stands to talk to the reception desk (simulated visitors check in here). */
+export interface Counter {
+  id: string;
+  at: Point;
+  face: Face;
+  roomId?: string;
+}
+
+/** The behavior world plus the extras this module derives (lounge seats, doorways, reception counters). */
 export interface OfficeWorld extends World {
   lounges: LoungeSeat[];
   doorways: Doorway[];
+  counters: Counter[];
 }
 
 /** Which way a meeting chair faces: towards an adjacent table, else down (towards the viewer). */
@@ -94,9 +103,15 @@ export function buildWorld(layout: OfficeLayout, windowXs: readonly number[], ni
   };
 
   const spots: Spot[] = [];
+  const counters: Counter[] = [];
   const push = (s: Spot, roomId: string | undefined) => spots.push(roomId ? { ...s, roomId } : s);
   for (const it of layout.items) {
     const roomId = roomIdAt(it);
+    if (it.type === 'reception') {
+      const a = access(it);
+      if (a) counters.push(roomId ? { id: it.id, ...a, roomId } : { id: it.id, ...a });
+      continue;
+    }
     if (it.type === 'couch') {
       // Sit on the couch itself; it must be reachable from a free neighbour.
       if (access(it)) push({ id: it.id, kind: 'couch', at: { x: it.x, y: it.y }, face: 'down' }, roomId);
@@ -127,7 +142,7 @@ export function buildWorld(layout: OfficeLayout, windowXs: readonly number[], ni
       if (open(a) && open(b) && !used.has(key(a)) && !used.has(key(b))) chatTiles.push(a);
     }
 
-  return { spots, chatTiles, rooms: roomInfos, night, lounges: loungeSeats(layout, free, roomIdAt), doorways: doorways(rooms, open, reach) };
+  return { spots, chatTiles, rooms: roomInfos, night, lounges: loungeSeats(layout, free, roomIdAt), doorways: doorways(rooms, open, reach), counters };
 }
 
 /** Free-standing chairs (no adjacent table) in common areas, reachable from a free neighbour. */

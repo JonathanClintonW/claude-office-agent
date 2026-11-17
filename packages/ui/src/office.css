@@ -109,6 +109,25 @@
   gap: 8px;
   padding: 2px 0;
 }
+/* A simulated meeting in the room: same lavender as the other simulated things. */
+.room-meeting {
+  padding: 4px 6px;
+  border: 2px dashed #6b5fa8;
+  background: rgba(201, 167, 255, 0.08);
+}
+.sim-tag {
+  display: inline-block;
+  font-family: var(--title);
+  font-size: 9px;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  color: #1a1424;
+  background: #c9a7ff;
+  vertical-align: middle;
+}
+.room-occupant-meeting {
+  color: #c9a7ff;
+}
 
 /* ---------------------------------------------------------------- layout editor */
 .tool-group .tool-group-title {
@@ -174,4 +193,10 @@
   height: 10px;
   background: #f1ecff;
   border: 2px dashed #6b5fa8;
+}
+.room-meeting-start {
+  margin-top: 6px;
+}
+.room-meeting-start p {
+  margin: 4px 0 0;
 }

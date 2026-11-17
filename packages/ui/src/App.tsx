@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TERMINAL_STATUSES, type OfficeLayout } from '@agent-office/core';
+import { useSound } from './audio/useSound';
 import { AgentList } from './components/AgentList';
 import { InferenceBadge } from './components/InferenceBadge';
 import { Inspector } from './components/Inspector';
@@ -28,6 +29,7 @@ export function App() {
   const store = useStoreInstance();
   const snap = useOffice();
   const now = useNow(1000);
+  const sound = useSound();
   const [selected, setSelected] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>('none');
   const [view, setView] = usePersistentState<ViewId>('view', 'office');
@@ -172,6 +174,7 @@ export function App() {
             editMode={editing}
             idleLife={idleLife}
             openTasks={openTasks}
+            sound={sound}
             onSelect={select}
             onBoardClick={() => setView('tasks')}
             onTileClick={(x, y) => draft && applyEdit(applyTool(draft, tool, x, y))}

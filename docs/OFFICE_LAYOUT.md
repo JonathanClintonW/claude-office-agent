@@ -148,7 +148,7 @@ The canvas fills the office pane; the camera moves the office inside it.
 | Fit the whole office | **Fit** button or `0` |
 | Pan | Drag empty floor or the margin; arrow keys. In edit mode: right/middle-drag, margins or keys |
 | Navigate | Click the mini-map (**Settings → Mini-map**) |
-| Room info | Click a room's floor: name, kind, desks in use and who is in it right now |
+| Room info | Click a room's floor: name, kind, desks in use and who is in it right now. A simulated meeting there is shown with a `simulated` tag (who holds it, phase, head count, time left). Meeting, collaboration and break rooms without one offer **Hold a simulated meeting here**, which brings a few simulated visitors in to meet ([SIMULATION.md](SIMULATION.md#simulated-visitors)). |
 
 Zoom steps are 0.5×, 0.75×, then whole steps 1×–2× and half steps above (2.5×, 3×, 3.5×, 4×, 5×,
 6×, 8×), so art pixels stay square. **Fit** picks the largest zoom that shows the whole office (quarter steps below 2×,

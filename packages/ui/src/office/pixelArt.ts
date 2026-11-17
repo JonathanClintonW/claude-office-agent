@@ -112,7 +112,8 @@ export interface Look {
   pants: string;
   /** Cap colour for subagents, headset colour for teammates. */
   accent?: string;
-  role: 'session' | 'subagent' | 'teammate';
+  /** `visitor`: a simulated visitor (visitors.ts), never an agent; wears a lavender lanyard badge. */
+  role: 'session' | 'subagent' | 'teammate' | 'visitor';
 }
 
 const OUTLINE = '#17141f';
@@ -164,6 +165,25 @@ export function lookFor(seed: string, role: Look['role'], familySeed: string): L
   if (role === 'subagent') look.accent = FAMILY[(hash(familySeed) + 5) % FAMILY.length];
   if (role === 'teammate') look.accent = '#e8e8ee';
   return look;
+}
+
+/** Muted clothes for simulated visitors (agents wear their session's family colour). */
+const VISITOR_SHIRTS = ['#7d8597', '#a1887f', '#6d8b74', '#9575a6', '#b5a46a', '#5f7d95', '#b07a6e'];
+/** Lanyard and badge stripe of simulated visitors: the lavender of simulated speech. */
+export const VISITOR_BADGE = { strap: '#8f7fd6', card: '#d9d0ff', stripe: '#5a4d9e' } as const;
+
+/** Look of a simulated visitor: muted clothes and a lavender lanyard badge. */
+export function visitorLook(seed: string): Look {
+  const h = hash(`visitor:${seed}`);
+  return {
+    outfit: ([1, 2, 3] as const)[h % 3]!,
+    hairStyle: ((h >>> 6) % 4) as Look['hairStyle'],
+    shirt: VISITOR_SHIRTS[(h >>> 3) % VISITOR_SHIRTS.length]!,
+    skin: SKINS[(h >>> 9) % SKINS.length]!,
+    hair: HAIRS[(h >>> 12) % HAIRS.length]!,
+    pants: PANTS[(h >>> 15) % PANTS.length]!,
+    role: 'visitor',
+  };
 }
 
 export function workspaceColor(key: string): string {
@@ -595,6 +615,21 @@ export function drawCharacter(look: Look, pose: Pose): HTMLCanvasElement {
       px(3, hy + 3, 1, 3, '#3a3f4f');
       px(12, hy + 3, 1, 3, '#3a3f4f');
       if (facing === 'down') px(11, hy + 6, 2, 1, look.accent ?? '#e8e8ee');
+    }
+  } else if (look.role === 'visitor') {
+    // Lanyard with a visitor badge (lavender: simulated).
+    const b = VISITOR_BADGE;
+    if (facing === 'down' && pose !== 'read') {
+      px(6, ty, 1, 2, b.strap);
+      px(9, ty, 1, 2, b.strap);
+      px(7, ty + 2, 2, 3, b.card);
+      px(7, ty + 2, 2, 1, b.stripe);
+    } else if (facing === 'side') {
+      px(7, ty, 1, 2, b.strap);
+      px(8, ty + 2, 1, 2, b.card);
+      px(8, ty + 2, 1, 1, b.stripe);
+    } else if (facing === 'up') {
+      px(6, ty, 4, 1, b.strap); // strap round the back of the neck
     }
   }
 

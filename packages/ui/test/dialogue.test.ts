@@ -40,7 +40,7 @@ describe('dialogue table', () => {
     for (const r of DIALOGUE_RULES) {
       expect(families).toContain(r.family);
       expect(r.when.length).toBeGreaterThan(0);
-      for (const a of r.after ?? []) expect(a.startsWith('open_'), a).toBe(true);
+      for (const a of r.after ?? []) expect(DIALOGUE_RULES.find((x) => x.family === a)?.roles, a).toContain('open');
     }
     expect(SPEECH_SOURCE).toBe('local-template');
   });
@@ -166,6 +166,25 @@ describe('dialogue rules (context → family)', () => {
     expect(candidateFamilies(inp({ activity: 'window', night: false, hour: 23 }))).toEqual(['act_window_day']);
     expect(candidateFamilies(inp({ activity: 'window', hour: 23 }))).toEqual(['act_window_night']);
   });
+
+  it('keeps visitor lines and agent lines apart', () => {
+    const visitor = (over: Partial<DialogueInput>) => candidateFamilies(inp({ visitor: true, ...over }));
+    // Visitors chat with their own lines (plus shared small talk) and never claim agent facts.
+    expect(visitor({ role: 'open', activity: 'chat', hour: 22 })).toEqual(['visit_open']);
+    expect(visitor({ role: 'reply', activity: 'chat', after: 'visit_open' })).toEqual(['visit_reply']);
+    expect(visitor({ role: 'reply', activity: 'chat', after: 'open_generic' })).toEqual([]);
+    expect(visitor({ role: 'small_talk', activity: 'chat' })).toEqual(['small_talk']);
+    expect(visitor({ role: 'close', activity: 'chat', hour: 23 })).toEqual(['visit_close']);
+    expect(visitor({ activity: 'reception' })).toEqual(['visit_reception']);
+    expect(visitor({ activity: 'visit' })).toEqual(['visit_room']);
+    expect(visitor({ activity: 'coffee' })).toEqual(['act_coffee']);
+    expect(visitor({ activity: 'toilet' })).toEqual([]);
+    expect(visitor({ activity: 'stretch' })).toEqual([]);
+    // Agents never get visitor lines.
+    expect(candidateFamilies(inp({ activity: 'reception' }))).toEqual([]);
+    expect(candidateFamilies(inp({ role: 'open', activity: 'chat' }))).not.toContain('visit_open');
+    expect(candidateFamilies(inp({ role: 'close', activity: 'chat' }))).toEqual(['close_back']);
+  });
 });
 
 describe('pickLine', () => {
@@ -207,8 +226,14 @@ describe('pickLine', () => {
     }
   });
 
-  it('always has an answer for any opener it produced', () => {
+  it('always has an answer for any opener it produced, also between visitors', () => {
     const r = seeded(5);
+    for (let i = 0; i < 200; i++) {
+      const hour = Math.floor(r() * 24);
+      const open = pickLine(inp({ role: 'open', activity: 'chat', visitor: true, hour, rng: r }))!;
+      expect(open.family).toBe('visit_open');
+      expect(pickLine(inp({ role: 'reply', activity: 'chat', visitor: true, after: open.family, hour, rng: r })), open.family).toBeDefined();
+    }
     for (let i = 0; i < 1000; i++) {
       const leader = randomFacts(r);
       const partner = randomFacts(r);

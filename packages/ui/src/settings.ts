@@ -19,8 +19,18 @@ export interface DepartmentRule {
 export interface OfficeSettings {
   /** Maximum render frame rate. */
   animationFps: 15 | 30 | 60;
-  /** How often idle agents start simulated activities. */
+  /** How often idle agents start simulated activities (and how often simulated visitors come in). */
   idleFrequency: 'low' | 'normal' | 'high';
+  /** Simulated visitors (not agents) walk through the office while idle life is on. */
+  visitors: boolean;
+  /** Sound master switch (off by default; browsers need a click before any audio plays). */
+  sound: boolean;
+  /** Procedural background music (while sound is on). */
+  music: boolean;
+  /** Sound effects and typing ambience (while sound is on). */
+  soundEffects: boolean;
+  /** Volume, 0..1. */
+  volume: number;
   roomLabels: boolean;
   minimap: boolean;
   /** Fewer particles, no bobbing/flashing. Defaults to the OS preference. */
@@ -44,6 +54,11 @@ export function defaultSettings(): OfficeSettings {
   return {
     animationFps: 30,
     idleFrequency: 'normal',
+    visitors: true,
+    sound: false,
+    music: true,
+    soundEffects: true,
+    volume: 0.5,
     roomLabels: true,
     minimap: true,
     reduceMotion: prefersReducedMotion(),
@@ -79,6 +94,11 @@ function sanitize(raw: unknown): OfficeSettings {
   return {
     animationFps: r.animationFps === 15 || r.animationFps === 30 || r.animationFps === 60 ? r.animationFps : d.animationFps,
     idleFrequency: r.idleFrequency === 'low' || r.idleFrequency === 'high' || r.idleFrequency === 'normal' ? r.idleFrequency : d.idleFrequency,
+    visitors: typeof r.visitors === 'boolean' ? r.visitors : d.visitors,
+    sound: typeof r.sound === 'boolean' ? r.sound : d.sound,
+    music: typeof r.music === 'boolean' ? r.music : d.music,
+    soundEffects: typeof r.soundEffects === 'boolean' ? r.soundEffects : d.soundEffects,
+    volume: typeof r.volume === 'number' && Number.isFinite(r.volume) ? Math.min(1, Math.max(0, r.volume)) : d.volume,
     roomLabels: typeof r.roomLabels === 'boolean' ? r.roomLabels : d.roomLabels,
     minimap: typeof r.minimap === 'boolean' ? r.minimap : d.minimap,
     reduceMotion: typeof r.reduceMotion === 'boolean' ? r.reduceMotion : d.reduceMotion,

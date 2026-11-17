@@ -1,5 +1,5 @@
 /**
- * SIMULATED dialogue for idle life.
+ * SIMULATED dialogue for idle life and simulated visitors.
  *
  * A fixed, local template library: no model, no network, no prompt, no Claude API/CLI/MCP.
  * Every line an idle worker can "say" is listed verbatim in DIALOGUE_TABLE below (and in
@@ -69,7 +69,12 @@ export type DialogueFamily =
   | 'act_window_day'
   | 'act_window_night'
   | 'act_couch'
-  | 'act_walk';
+  | 'act_walk'
+  | 'visit_open'
+  | 'visit_reply'
+  | 'visit_close'
+  | 'visit_reception'
+  | 'visit_room';
 
 /** The complete vocabulary. Nothing outside this table can ever be returned. */
 export const DIALOGUE_TABLE: Readonly<Record<DialogueFamily, readonly string[]>> = {
@@ -110,6 +115,11 @@ export const DIALOGUE_TABLE: Readonly<Record<DialogueFamily, readonly string[]>>
   act_window_night: ['Quiet night.', 'Look at the stars.'],
   act_couch: ['Just resting my eyes.', 'A short break.'],
   act_walk: ['Stretching my legs.', 'Quick walk.'],
+  visit_open: ['First time here?', 'Are you visiting too?', 'Here for a meeting?'],
+  visit_reply: ['Yes, just looking around.', 'Just dropping by.', 'Yes, I have a meeting soon.'],
+  visit_close: ['Nice meeting you!', 'Enjoy your visit!', 'See you around!'],
+  visit_reception: ["Hi, I'm here for a visit.", 'Checking in.', 'Where do I sign in?'],
+  visit_room: ['Nice setup in here.', 'So this is where it happens.', 'What a nice room.'],
 };
 
 /** Real-data facts a rule may use. `lastTestPassAt` is optional and only set by callers that observed it. */
@@ -133,6 +143,11 @@ export interface DialogueInput {
   hour: number;
   /** Night lighting in the office (window lines); derived from `hour` when omitted. */
   night?: boolean;
+  /**
+   * The speaker is a simulated visitor (visitors.ts): no real context, so only rules marked
+   * for visitors apply. Agents never get the visitor lines.
+   */
+  visitor?: boolean;
   rng: () => number;
   /** Recently said lines to avoid (variety); ignored when a family has nothing else. */
   avoid?: readonly string[];
@@ -198,6 +213,8 @@ export interface DialogueRule {
   weight: number;
   /** For replies: the opener families this rule can answer. */
   after?: readonly DialogueFamily[];
+  /** Who may say it: agents only (default), simulated visitors only, or both. */
+  speakers?: 'agents' | 'visitors' | 'both';
   test: (c: DialogueInput) => boolean;
 }
 
@@ -270,31 +287,45 @@ export const DIALOGUE_RULES: readonly DialogueRule[] = [
   },
 
   // filler and closing lines
-  { family: 'small_talk', roles: ['small_talk'], weight: 1, when: 'always', test: always },
+  { family: 'small_talk', roles: ['small_talk'], weight: 1, when: 'always', speakers: 'both', test: always },
   { family: 'close_back', roles: ['close'], weight: 3, when: 'always', test: always },
   { family: 'close_late', roles: ['close'], weight: 2, when: 'local time 20:00-04:59', test: (c) => isLate(c.hour) },
 
-  // solo activity lines
-  { family: 'act_coffee', roles: ['solo'], weight: 3, when: 'getting coffee (not late)', test: (c) => c.activity === 'coffee' && !isLate(c.hour) },
-  { family: 'act_coffee_late', roles: ['solo'], weight: 3, when: 'getting coffee, local time 20:00-04:59', test: (c) => c.activity === 'coffee' && isLate(c.hour) },
-  { family: 'act_water', roles: ['solo'], weight: 3, when: 'at the water cooler', test: act('water') },
-  { family: 'act_snack', roles: ['solo'], weight: 3, when: 'at the snack spot', test: act('snack') },
-  { family: 'act_books', roles: ['solo'], weight: 3, when: 'at a bookshelf', test: act('books') },
-  { family: 'act_board', roles: ['solo'], weight: 3, when: 'at the noticeboard', test: act('board') },
-  { family: 'act_whiteboard', roles: ['solo'], weight: 3, when: 'at a whiteboard', test: act('whiteboard') },
+  // solo activity lines (the generic ones are shared with simulated visitors)
+  { family: 'act_coffee', roles: ['solo'], weight: 3, when: 'getting coffee (not late)', speakers: 'both', test: (c) => c.activity === 'coffee' && !isLate(c.hour) },
+  { family: 'act_coffee_late', roles: ['solo'], weight: 3, when: 'getting coffee, local time 20:00-04:59', speakers: 'both', test: (c) => c.activity === 'coffee' && isLate(c.hour) },
+  { family: 'act_water', roles: ['solo'], weight: 3, when: 'at the water cooler', speakers: 'both', test: act('water') },
+  { family: 'act_snack', roles: ['solo'], weight: 3, when: 'at the snack spot', speakers: 'both', test: act('snack') },
+  { family: 'act_books', roles: ['solo'], weight: 3, when: 'at a bookshelf', speakers: 'both', test: act('books') },
+  { family: 'act_board', roles: ['solo'], weight: 3, when: 'at the noticeboard', speakers: 'both', test: act('board') },
+  { family: 'act_whiteboard', roles: ['solo'], weight: 3, when: 'at a whiteboard', speakers: 'both', test: act('whiteboard') },
   { family: 'act_plant', roles: ['solo'], weight: 3, when: 'watering a plant', test: act('plant') },
   { family: 'act_stretch', roles: ['solo'], weight: 3, when: 'stretching', test: act('stretch') },
-  { family: 'act_window_day', roles: ['solo'], weight: 3, when: 'at a window, office not in night mode', test: (c) => c.activity === 'window' && !isNight(c) },
-  { family: 'act_window_night', roles: ['solo'], weight: 3, when: 'at a window, office in night mode', test: (c) => c.activity === 'window' && isNight(c) },
-  { family: 'act_couch', roles: ['solo'], weight: 3, when: 'on the couch', test: act('couch') },
+  { family: 'act_window_day', roles: ['solo'], weight: 3, when: 'at a window, office not in night mode', speakers: 'both', test: (c) => c.activity === 'window' && !isNight(c) },
+  { family: 'act_window_night', roles: ['solo'], weight: 3, when: 'at a window, office in night mode', speakers: 'both', test: (c) => c.activity === 'window' && isNight(c) },
+  { family: 'act_couch', roles: ['solo'], weight: 3, when: 'on the couch', speakers: 'both', test: act('couch') },
   // A stroll to another department's doorway is a short walk too.
   { family: 'act_walk', roles: ['solo'], weight: 3, when: 'short walk', test: (c) => c.activity === 'walk' || c.activity === 'stroll' },
+
+  // simulated visitors only (no real context exists for them)
+  { family: 'visit_open', roles: ['open'], weight: 1, when: 'a visitor starts a chat with another visitor', speakers: 'visitors', test: always },
+  { family: 'visit_reply', roles: ['reply'], weight: 1, when: "a visitor answers another visitor's opener", speakers: 'visitors', after: ['visit_open'], test: always },
+  { family: 'visit_close', roles: ['close'], weight: 1, when: 'a visitor ends a chat', speakers: 'visitors', test: always },
+  { family: 'visit_reception', roles: ['solo'], weight: 3, when: 'a visitor checks in at reception', speakers: 'visitors', test: act('reception') },
+  { family: 'visit_room', roles: ['solo'], weight: 3, when: 'a visitor looks around a room', speakers: 'visitors', test: act('visit') },
 ];
+
+/** The rule may be said by this speaker (agents by default; visitors only where marked). */
+function speakerFits(r: DialogueRule, c: DialogueInput): boolean {
+  const who = r.speakers ?? 'agents';
+  return who === 'both' || (who === 'visitors') === Boolean(c.visitor);
+}
 
 /** Rules that apply to an input, in table order (pure; useful for audits and tests). */
 export function candidateRules(c: DialogueInput): DialogueRule[] {
   return DIALOGUE_RULES.filter(
-    (r) => r.roles.includes(c.role) && (c.role !== 'reply' || !r.after || (c.after !== undefined && r.after.includes(c.after))) && r.test(c),
+    (r) =>
+      speakerFits(r, c) && r.roles.includes(c.role) && (c.role !== 'reply' || !r.after || (c.after !== undefined && r.after.includes(c.after))) && r.test(c),
   );
 }
 

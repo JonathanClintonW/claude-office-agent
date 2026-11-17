@@ -95,7 +95,8 @@ export interface MeetingOptions {
 export const DEFAULT_MEETING_OPTIONS: MeetingOptions = {
   firstDelay: [20_000, 45_000],
   interval: [45_000, 120_000],
-  duration: { meeting: [25_000, 50_000], collaboration: [20_000, 40_000], break: [15_000, 30_000] },
+  // A few minutes, like a real meeting (real work still pulls anyone out at once).
+  duration: { meeting: [120_000, 240_000], collaboration: [90_000, 180_000], break: [60_000, 120_000] },
   arrivalTimeout: 30_000,
   minParticipants: 2,
   maxParticipants: 5,
