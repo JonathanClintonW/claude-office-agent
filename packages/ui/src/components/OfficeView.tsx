@@ -1,10 +1,12 @@
 import { useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent, type Ref } from 'react';
 import { STATUS_META, type OfficeLayout, type OfficeState } from '@agent-office/core';
+import type { SoundSink } from '../audio/engine';
 import { isDepartmentKind, ROOM_KIND_LABELS } from '../departments';
 import { keyAction } from '../office/camera';
 import { collabVisuals } from '../office/collab';
 import type { MeetingInfo } from '../office/meetings';
-import { OfficeScene, type MiniMapState, type RoomOccupant, type SceneCallbacks, type WorkerView } from '../office/scene';
+import { OfficeScene, type MiniMapState, type RoomMeeting, type RoomOccupant, type SceneCallbacks, type WorkerView } from '../office/scene';
+import type { MeetingRequest } from '../office/visitors';
 import { IDLE_FREQUENCY_MULTIPLIER, useSettings } from '../settings';
 import { MiniMap } from './MiniMap';
 import '../office.css';
@@ -51,11 +53,46 @@ interface Props {
   collabNow?: number;
   /** Fixed lighting hour (e.g. a replay's time); otherwise `?hour=` or the local clock. */
   hourOverride?: number | null;
+  /** Where office sounds go (the live office only; replays stay silent). */
+  sound?: SoundSink;
 }
 
 interface RoomCard {
   occupants: RoomOccupant[];
   desks: { desks: number; assigned: number };
+  /** Simulated meeting or gathering in the room right now (office animation). */
+  meeting?: RoomMeeting;
+}
+
+/** Rooms where a meeting can be held (and the room card offers to start one). */
+const MEETING_ROOM_KINDS = new Set(['meeting', 'collaboration', 'break']);
+const MEETING_LABEL: Record<string, string> = {
+  meeting: 'Meeting',
+  collaboration: 'Huddle',
+  break: 'Group break',
+  coffee: 'Coffee chat',
+  chat: 'Group chat',
+  discussion: 'Team discussion',
+};
+const MEETING_PHASE: Record<RoomMeeting['phase'], string> = { gathering: 'gathering', meeting: 'in progress', ending: 'wrapping up' };
+const REQUEST_NOTE: Record<Exclude<MeetingRequest, 'ok'>, string> = {
+  disabled: 'Visitors are off. Turn on Idle life (top bar) and Simulated visitors (Settings).',
+  already: 'A visitor meeting is already on in another room.',
+  busy: 'Agents are meeting here right now.',
+  'no-seats': 'No free seats here right now.',
+};
+
+/** "Meeting · in progress · 3 agents · about 2 min left" for the room card. */
+function meetingSummary(m: RoomMeeting, now: number): string {
+  const kind = MEETING_LABEL[m.kind === 'social' ? (m.topic ?? 'chat') : m.kind] ?? 'Meeting';
+  const what = m.who === 'visitors' ? `Visitor ${kind.toLowerCase()}` : kind;
+  const noun = m.who === 'visitors' ? (m.people === 1 ? 'visitor' : 'visitors') : m.people === 1 ? 'agent' : 'agents';
+  const parts = [what, MEETING_PHASE[m.phase] ?? m.phase, `${m.people} ${noun}`];
+  if (m.phase === 'meeting' && m.endsAt !== undefined) {
+    const min = Math.round((m.endsAt - now) / 60_000);
+    parts.push(min >= 1 ? `about ${min} min left` : 'ending soon');
+  }
+  return parts.join(' · ');
 }
 
 /** `?hour=0..23` forces the lighting (preview/testing). */
@@ -77,6 +114,11 @@ export function OfficeView({ ref, ...p }: Props) {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [card, setCard] = useState<RoomCard | null>(null);
   const [zoom, setZoom] = useState<number | undefined>();
+  /** Answer to "Hold a simulated meeting here" for the open room card. */
+  const [requestNote, setRequestNote] = useState<string | null>(null);
+  const visitorsOn = p.idleLife && settings.visitors && !p.editMode;
+  const meetingShown = Boolean(card?.meeting);
+  useEffect(() => setRequestNote(null), [roomId, meetingShown]);
 
   useEffect(() => {
     const callbacks: SceneCallbacks = {
@@ -133,6 +175,8 @@ export function OfficeView({ ref, ...p }: Props) {
     if (p.editMode) setRoomId(null);
   }, [p.editMode]);
   useEffect(() => scene.current?.setIdleLife(p.idleLife), [p.idleLife]);
+  useEffect(() => scene.current?.setVisitors(settings.visitors), [settings.visitors]);
+  useEffect(() => scene.current?.setSound(p.sound ?? null), [p.sound]);
   useEffect(() => scene.current?.setOpenTasks(p.openTasks), [p.openTasks]);
   useEffect(() => scene.current?.setAnimationFps(settings.animationFps), [settings.animationFps]);
   useEffect(() => scene.current?.setReduceMotion(settings.reduceMotion), [settings.reduceMotion]);
@@ -172,7 +216,12 @@ export function OfficeView({ ref, ...p }: Props) {
         const next = s.minimapState();
         setMini((prev) => (prev && JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
       }
-      if (roomId) setCard({ occupants: s.roomOccupants(roomId), desks: s.roomDesks(roomId) });
+      if (roomId) {
+        const next: RoomCard = { occupants: s.roomOccupants(roomId), desks: s.roomDesks(roomId) };
+        const meeting = s.roomMeeting(roomId);
+        if (meeting) next.meeting = meeting;
+        setCard(next);
+      }
     };
     tick();
     const id = setInterval(tick, 250);
@@ -219,9 +268,13 @@ export function OfficeView({ ref, ...p }: Props) {
         </button>
       </div>
       {p.idleLife && !p.editMode ? (
-        <div className="sim-legend small" title="Idle agents' small talk, meetings and breaks are a local simulation. Nothing here is generated by a model or sent anywhere.">
+        <div
+          className="sim-legend small"
+          title={`Idle agents' small talk, meetings and breaks${settings.visitors ? ', and the visitors' : ''} are a local simulation. Nothing here is generated by a model or sent anywhere.`}
+        >
           <span className="sim-legend-swatch" aria-hidden="true" />
           Dashed lavender bubbles: simulated small talk (local templates), not agent output
+          {settings.visitors ? '. Lavender badge: simulated visitor' : ''}
         </div>
       ) : null}
       {settings.minimap && mini ? (
@@ -244,6 +297,33 @@ export function OfficeView({ ref, ...p }: Props) {
               {card.desks.assigned} of {card.desks.desks} desks in use
             </p>
           ) : null}
+          {card?.meeting ? (
+            <p
+              className="small room-meeting"
+              title={
+                card.meeting.who === 'visitors'
+                  ? 'Simulated visitors, not agents. They make room as soon as agents need it.'
+                  : 'An office animation for idle agents. It is not real Claude Code work; an agent that gets work leaves at once.'
+              }
+            >
+              <span className="sim-tag">simulated</span> {meetingSummary(card.meeting, Date.now())}
+            </p>
+          ) : MEETING_ROOM_KINDS.has(room.kind) ? (
+            <div className="room-meeting-start">
+              <button
+                className="btn small"
+                disabled={!visitorsOn}
+                title={visitorsOn ? 'A few simulated visitors (not agents) come in and meet here for a few minutes.' : REQUEST_NOTE.disabled}
+                onClick={() => {
+                  const r = scene.current?.startVisitorMeeting(room.id) ?? 'disabled';
+                  setRequestNote(r === 'ok' ? 'Visitors are on their way.' : REQUEST_NOTE[r]);
+                }}
+              >
+                Hold a simulated meeting here
+              </button>
+              {requestNote ? <p className="muted small">{requestNote}</p> : null}
+            </div>
+          ) : null}
           {card && card.occupants.length ? (
             <ul className="room-occupants">
               {card.occupants.map((o) => (
@@ -252,14 +332,15 @@ export function OfficeView({ ref, ...p }: Props) {
                     {o.simulated ? 'SIM ' : ''}
                     {o.name}
                   </button>
-                  <span className="small" style={{ color: STATUS_META[o.status].color }}>
-                    {STATUS_META[o.status].label}
+                  <span className="small">
+                    {o.inMeeting ? <span className="room-occupant-meeting">in the meeting · </span> : null}
+                    <span style={{ color: STATUS_META[o.status].color }}>{STATUS_META[o.status].label}</span>
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted small">Nobody is in this room right now.</p>
+            <p className="muted small">No agents in this room right now.</p>
           )}
         </div>
       ) : null}

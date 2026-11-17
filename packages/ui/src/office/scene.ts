@@ -2,15 +2,18 @@ import 'pixi.js/unsafe-eval'; // CSP-safe (no eval) for VS Code webviews
 import { Application, CanvasSource, Container, Graphics, Rectangle, Sprite, Text, Texture, type FederatedPointerEvent } from 'pixi.js';
 import { STATUS_META, TERMINAL_STATUSES, WALL_ROWS, roomContains, type AgentKind, type AgentStatus, type OfficeLayout, type Room, type RoomKind } from '@agent-office/core';
 import { assignDesks, assignSlots, key as tileKey, loungeSpots, planRoute, ProgressWatch, roomAt, seatsOf, walkable, type Assignable, type Point, type Seat } from './grid';
-import type { Actor, BehaviorProvider, Directive, World } from './behavior';
+import { cueForStatus, type SfxKind } from '../audio/cues';
+import type { SoundSink } from '../audio/engine';
+import type { Actor, BehaviorProvider, Directive } from './behavior';
 import type { CollabVisual } from './collab';
 import type { DialogueFacts } from './dialogue';
 import { resolveDirectives, restPhase, type ArbiterActor, type Claim, type Resolved } from './directives';
 import { DEFAULT_DIRECTOR_OPTIONS, IdleDirector } from './idleLife';
-import { DEFAULT_MEETING_OPTIONS, MeetingScheduler, type MeetingInfo } from './meetings';
+import { DEFAULT_MEETING_OPTIONS, MeetingScheduler, type MeetingInfo, type MeetingKind, type MeetingPhase, type SocialTopic } from './meetings';
 import { idleDeskPose, idleStandPose, seatedFrame, spritePose, workPresentation, type WorkInput, type WorkPresentation } from './poses';
 import { TeamworkProvider } from './teamwork';
-import { buildWorld, chairFacing, destinationTiles } from './world';
+import { DEFAULT_VISITOR_OPTIONS, VisitorDirector, type MeetingRequest, type VisitorBody, type VisitorDirective } from './visitors';
+import { buildWorld, chairFacing, destinationTiles, type OfficeWorld } from './world';
 import {
   approach,
   centerOn,
@@ -82,6 +85,7 @@ import {
   skyFor,
   drawSpeechBubble,
   TILE,
+  visitorLook,
   type BubbleKind,
   type Look,
   type Pose,
@@ -138,14 +142,70 @@ export interface MiniMapState {
   workers: Array<{ key: string; x: number; y: number; status: AgentStatus; selected: boolean }>;
 }
 
+/** A simulated meeting in a room, for the room card (always simulated). */
+export interface RoomMeeting {
+  /** Held by idle agents (meetings.ts) or by simulated visitors (visitors.ts). */
+  who: 'agents' | 'visitors';
+  kind: MeetingKind;
+  topic?: SocialTopic;
+  phase: MeetingPhase;
+  people: number;
+  endsAt?: number;
+}
+
 export interface RoomOccupant {
   key: string;
   name: string;
   status: AgentStatus;
   simulated: boolean;
+  /** Taking part in a simulated meeting or gathering right now (office animation, not real work). */
+  inMeeting?: boolean;
 }
 
 type Phase = 'walking' | 'seated' | 'standing' | 'leaving';
+
+/** What walking needs: agents' workers and simulated visitors move the same way. */
+interface Walker {
+  pos: { x: number; y: number };
+  path: Point[];
+  phase: Phase;
+  arrive: Phase;
+  target?: Point;
+  facing: 'down' | 'up' | 'left' | 'right';
+  /** Stuck detection for the current walk. */
+  watch: ProgressWatch;
+}
+
+/** Simulated speech bubble (local template line), drawn in screen space. */
+interface Speech {
+  node: Container;
+  box: Sprite;
+  text: Text;
+  line?: string;
+}
+
+/**
+ * A simulated visitor's body (visitors.ts). Never an agent: it has no WorkerView, cannot be
+ * selected, and stays out of the mini-map, room cards and agent lists.
+ */
+interface Guest extends Walker {
+  id: string;
+  lookKey: string;
+  look: Look;
+  offset: number;
+  leaving: boolean;
+  /** Current simulated activity, if any. */
+  perform?: Extract<Directive, { type: 'do' }>;
+  node: Container;
+  sprite: Sprite;
+  bubble: Sprite;
+  /** "Visitor (simulated)", shown on hover or with names on. */
+  label: Text;
+  hovered: boolean;
+  shownPose?: Pose;
+  shownBubble?: BubbleKind;
+  speech: Speech;
+}
 
 interface Worker {
   view: WorkerView;
@@ -190,7 +250,7 @@ interface Worker {
   /** Desk presentation for the real state, computed once per frame. */
   pres?: WorkPresentation;
   /** Simulated speech bubble (local template line), drawn in screen space. */
-  speech: { node: Container; box: Sprite; text: Text; line?: string };
+  speech: Speech;
 }
 
 /** A paper / task card / check mark flying between two desks for a verified collaboration event. */
@@ -248,7 +308,14 @@ const CELEBRATE_MS = 3_500;
 const LABEL_FONT = '"Pixelify Sans", "Silkscreen", Consolas, monospace';
 const BOTTOM_WALL = 6;
 
+/** How dark it is; drives the strength of lamp, screen and prop glows. */
 const DARKNESS: Record<Sky, number> = { day: 0, dawn: 0.2, dusk: 0.28, night: 0.48 };
+/**
+ * Ambient light, multiplied over the room. Multiplying scales each colour channel instead of
+ * mixing in a flat dark wash, so the office keeps its colours after dark rather than turning
+ * a muddy near-greyscale. The cool night tint still reads as night.
+ */
+const AMBIENT: Record<Sky, number> = { day: 0xffffff, dawn: 0xf2ded2, dusk: 0xdcc8d8, night: 0x9ca8d8 };
 const SCREEN_LIGHT: Partial<Record<ScreenKind, number>> = {
   code: 0x5aa9ff,
   think: 0x5aa9ff,
@@ -271,12 +338,17 @@ const SCREEN_LIGHT: Partial<Record<ScreenKind, number>> = {
 const SEEDED_SCREENS = new Set<ScreenKind>(['code', 'read', 'search', 'edit', 'terminal']);
 /** Screens whose light flickers with on-screen activity. */
 const FLICKER_SCREENS = new Set<ScreenKind>(['code', 'edit', 'terminal', 'busy']);
+/** Real work at the keyboard: these desks feed the typing ambience. */
+const TYPING_SCREENS = new Set<ScreenKind>(['code', 'edit', 'terminal']);
 /** A failure is presented as "debugging" for this long unless something succeeded since. */
 const RECENT_FAILURE_MS = 10 * 60_000;
 const FLIGHT_MS = 1400;
 const MAX_FLIGHTS = 24;
 const SPEECH_FONT_SIZE = 11;
 const SPEECH_MAX_W = 150;
+/** Visitors stroll a little slower than agents walk. */
+const VISITOR_PACE = 0.85;
+const VISITOR_LABEL = 'Visitor (simulated)';
 
 function tex(canvas: HTMLCanvasElement): Texture {
   return new Texture({ source: new CanvasSource({ resource: canvas, scaleMode: 'nearest' }) });
@@ -354,6 +426,17 @@ export class OfficeScene {
    * is not undone by a coffee break), then idle life.
    */
   private behaviors: BehaviorProvider[] = [this.teamwork, this.meetings, this.director];
+  /**
+   * Simulated visitors (not agents) so the office has some life even without idle agents.
+   * They run after the agents' providers and keep off every tile an agent uses or wants.
+   */
+  private visitors = new VisitorDirector(Math.random, { ...DEFAULT_VISITOR_OPTIONS, hourOf: () => this.hour() });
+  private guests = new Map<string, Guest>();
+  private visitorsWanted = true;
+  /** Office sounds (music lives in the engine; the scene only sends cues and the activity level). */
+  private sound: SoundSink | null = null;
+  /** Spots in use at the previous behavior tick (coffee starts, restroom ends). */
+  private spotBusyBefore = new Set<string>();
   private active = true;
   private flights: Flight[] = [];
   private seenFlights = new Set<string>();
@@ -417,7 +500,8 @@ export class OfficeScene {
     // non-interactive sprite that is hit would swallow clicks meant for workers below it.
     for (const l of [this.frameLayer, this.zoneLayer, this.shadowLayer, this.darkness, this.lightLayer, this.fxLayer, this.editLayer, this.overlay]) l.eventMode = 'none';
     this.fxLayer.addChild(this.fx);
-    this.root.addChild(this.frameLayer, this.floorLayer, this.zoneLayer, this.wallLayer, this.shadowLayer, this.items, this.darkness, this.lightLayer, this.fxLayer, this.editLayer);
+    this.darkness.blendMode = 'multiply';
+    this.root.addChild(this.frameLayer,this.floorLayer, this.zoneLayer, this.wallLayer, this.shadowLayer, this.items, this.darkness, this.lightLayer, this.fxLayer, this.editLayer);
     // The backdrop (whole view, behind the office) lets the camera be dragged from the margins.
     this.app.stage.addChild(this.backdrop, this.root, this.overlay);
     this.overlay.sortableChildren = true;
@@ -515,11 +599,34 @@ export class OfficeScene {
     this.updateBehaviorsEnabled();
   }
 
+  /** Where sound cues go (null: silent, e.g. a history replay). */
+  setSound(sink: SoundSink | null): void {
+    this.sound = sink;
+  }
+
+  /** Play a cue, panned to where it happens on screen (world x in pixels). */
+  private cue(kind: SfxKind, worldX?: number): void {
+    if (!this.sound) return;
+    let pan = 0;
+    if (worldX !== undefined) {
+      const sx = this.root.position.x + worldX * this.cam.zoom;
+      pan = Math.max(-1, Math.min(1, (sx / Math.max(1, this.viewSize.w)) * 2 - 1)) * 0.7;
+    }
+    this.sound.play(kind, pan);
+  }
+
+  /** Simulated visitors walk through the office (settings.visitors; only while idle life is on). */
+  setVisitors(on: boolean): void {
+    this.visitorsWanted = on;
+    this.updateBehaviorsEnabled();
+  }
+
   setEditMode(on: boolean): void {
     this.editMode = on;
     this.updateBehaviorsEnabled();
     this.drawEditGrid();
     for (const w of this.workers.values()) w.node.eventMode = on ? 'none' : 'static';
+    for (const g of this.guests.values()) g.node.eventMode = on ? 'none' : 'static';
   }
 
   /**
@@ -539,6 +646,7 @@ export class OfficeScene {
   setIdleFrequency(multiplier: number): void {
     this.frequency = multiplier;
     for (const b of this.behaviors) b.setFrequency?.(multiplier);
+    this.visitors.setFrequency(multiplier);
   }
 
   /** Maximum render frame rate (settings.animationFps). */
@@ -584,7 +692,7 @@ export class OfficeScene {
    * World for behavior providers, with the scene's walkability check. Chat tiles skip the
    * lounge tiles where agents without a desk stand.
    */
-  private world(layout: OfficeLayout): World {
+  private world(layout: OfficeLayout): OfficeWorld {
     const w = buildWorld(layout, this.windowXs(), this.sky === 'night');
     const lounge = this.loungeKeys;
     const chatTiles = lounge.size ? w.chatTiles.filter((t) => !lounge.has(tileKey(t)) && !lounge.has(tileKey({ x: t.x + 1, y: t.y }))) : w.chatTiles;
@@ -614,6 +722,7 @@ export class OfficeScene {
       const from = this.workers.get(v.from);
       if (!from || !this.workers.has(v.to) || v.from === v.to) continue;
       this.flights.push({ id: v.id, kind: v.kind, from: this.workerWorldPos(from), to: v.to, start: performance.now(), ...(v.detail ? { detail: v.detail } : {}) });
+      this.cue('handoff', this.workerWorldPos(from).x);
       if (this.flights.length > MAX_FLIGHTS) this.flights.shift()?.label?.destroy();
     }
   }
@@ -710,7 +819,32 @@ export class OfficeScene {
     if (!room) return [];
     return [...this.workers.values()]
       .filter((w) => !w.leaving && roomContains(room, { x: Math.round(w.pos.x), y: Math.round(w.pos.y) }))
-      .map((w) => ({ key: w.view.key, name: w.view.name, status: w.view.status, simulated: w.view.simulated }));
+      .map((w) => {
+        const o: RoomOccupant = { key: w.view.key, name: w.view.name, status: w.view.status, simulated: w.view.simulated };
+        if (this.meetings.meetingOf(w.view.key)?.roomId === roomId) o.inMeeting = true;
+        return o;
+      });
+  }
+
+  /** The simulated meeting or gathering held in a room right now (idle agents or visitors), if any. */
+  roomMeeting(roomId: string): RoomMeeting | undefined {
+    const m = this.meetings.currentMeetings().find((x) => x.roomId === roomId);
+    if (m) {
+      const out: RoomMeeting = { who: 'agents', kind: m.kind, phase: m.phase, people: m.participants.length };
+      if (m.topic) out.topic = m.topic;
+      if (m.endsAt !== undefined) out.endsAt = m.endsAt;
+      return out;
+    }
+    const v = this.visitors.currentMeeting();
+    if (!v || v.roomId !== roomId) return undefined;
+    const out: RoomMeeting = { who: 'visitors', kind: v.roomKind as MeetingKind, phase: v.phase, people: v.visitors.length };
+    if (v.endsAt !== undefined) out.endsAt = v.endsAt;
+    return out;
+  }
+
+  /** Bring a small group of simulated visitors in for a meeting in this room (room card button). */
+  startVisitorMeeting(roomId: string): MeetingRequest {
+    return this.visitors.requestMeeting(roomId);
   }
 
   /** Desks in a room and how many are assigned to agents. */
@@ -1076,8 +1210,12 @@ export class OfficeScene {
       }
     }
     for (const w of this.workers.values()) if (!w.node.parent) this.items.addChild(w.node);
+    for (const g of this.guests.values()) if (!g.node.parent) this.items.addChild(g.node);
     const world = this.world(L);
     for (const b of this.behaviors) b.setWorld(world);
+    this.visitors.setWorld({ ...world, door: { x: L.door.x, y: L.rows } });
+    // Walls or furniture may have moved: route every visitor again on the next tick.
+    for (const g of this.guests.values()) g.target = undefined;
     this.lastSec = -1;
     this.labelCam.zoom = Number.NaN;
     this.applyTimeOfDay();
@@ -1089,7 +1227,7 @@ export class OfficeScene {
     const L = this.layout;
     const dark = DARKNESS[this.sky];
     this.darkness.clear();
-    if (dark > 0) this.darkness.rect(0, 0, L.cols * TILE, L.rows * TILE + BOTTOM_WALL).fill({ color: 0x0b1030, alpha: dark });
+    if (dark > 0) this.darkness.rect(0, 0, L.cols * TILE, L.rows * TILE + BOTTOM_WALL).fill({ color: AMBIENT[this.sky] });
     const lampsOn = this.sky === 'night' || this.sky === 'dusk';
     for (const l of this.lamps) {
       l.sprite.texture = this.t(lampsOn ? 'lamp1' : 'lamp0', () => drawLamp(lampsOn));
@@ -1205,6 +1343,8 @@ export class OfficeScene {
       if (!w) {
         w = this.createWorker(v, instant ? target : { x: L.door.x, y: L.rows });
         this.workers.set(v.key, w);
+        // A real agent walks in (not the ones already there when the office opens).
+        if (!instant) this.cue('arrive', L.door.x * TILE + TILE / 2);
       }
       this.effectsFor(w, v);
       w.view = v;
@@ -1238,16 +1378,24 @@ export class OfficeScene {
     if (v.lastToolEnd && v.lastToolEnd.id !== w.lastToolId) {
       if (w.lastToolId !== undefined || w.phase === 'seated') {
         if (v.lastToolEnd.ok) this.burst(hx, hy + 4, [0x7ee787, 0xffffff, 0xf2cc60], 6, -40);
-        else this.burst(hx, hy + 4, [0xff6b6b, 0x9aa5b1, 0x5a606c], 9, -18);
+        else {
+          this.burst(hx, hy + 4, [0xff6b6b, 0x9aa5b1, 0x5a606c], 9, -18);
+          this.cue('toolFail', hx);
+        }
       }
       w.lastToolId = v.lastToolEnd.id;
     }
     if (v.status !== w.lastStatus) {
       if (v.status === 'completed') this.burst(hx, hy, [0xff7a59, 0x4f8cff, 0xf2b134, 0x38c172, 0xb06bff], 18, -60);
+      const sound = cueForStatus(w.lastStatus, v.status);
+      if (sound) this.cue(sound, hx);
       w.lastStatus = v.status;
     }
     if (v.kind === 'session' && v.turnCompletedAt && v.turnCompletedAt !== w.lastTurn) {
-      if (Date.now() - v.turnCompletedAt < 5000) this.burst(hx, hy, [0xffe066, 0xffffff, 0x7ee787], 12, -50);
+      if (Date.now() - v.turnCompletedAt < 5000) {
+        this.burst(hx, hy, [0xffe066, 0xffffff, 0x7ee787], 12, -50);
+        this.cue('done', hx);
+      }
       w.lastTurn = v.turnCompletedAt;
     }
   }
@@ -1343,6 +1491,7 @@ export class OfficeScene {
   private updateBehaviorsEnabled(): void {
     this.behaviorsOn = this.idleLife && !this.editMode;
     for (const b of this.behaviors) b.setEnabled(this.behaviorsOn);
+    this.visitors.setEnabled(this.behaviorsOn && this.visitorsWanted);
   }
 
   private forgetActor(key: string): void {
@@ -1350,7 +1499,7 @@ export class OfficeScene {
   }
 
   private spotInUse(spotId: string): boolean {
-    return this.behaviors.some((b) => b.isInUse?.(spotId) ?? false);
+    return this.behaviors.some((b) => b.isInUse?.(spotId) ?? false) || this.visitors.isInUse(spotId);
   }
 
   /**
@@ -1398,10 +1547,205 @@ export class OfficeScene {
     }
     const resolved = resolveDirectives(arbiter, claimed, homes);
     for (const w of this.workers.values()) if (!w.leaving) this.applyDirective(w, resolved.get(w.view.key));
+    this.runVisitors(now);
     // Props that show whether a spot is in use (restroom door sign, busy coffee machine).
+    const before = this.spotBusyBefore;
+    this.spotBusyBefore = this.spotBusy;
+    this.spotBusy = before;
     this.spotBusy.clear();
     for (const p of this.toilets) if (this.spotInUse(p.id)) this.spotBusy.add(p.id);
     for (const p of this.coffees) if (this.spotInUse(p.id)) this.spotBusy.add(p.id);
+    // Simulated sounds: the coffee machine starts brewing; someone leaves the restroom.
+    for (const p of this.coffees) if (this.spotBusy.has(p.id) && !this.spotBusyBefore.has(p.id)) this.cue('coffee', p.sprite.x);
+    for (const p of this.toilets) if (!this.spotBusy.has(p.id) && this.spotBusyBefore.has(p.id)) this.cue('flush', p.sprite.x);
+  }
+
+  /**
+   * Simulated visitors: the director plans their trips, the scene walks them. Every tile an
+   * agent stands on (when not walking) or is heading to is passed as taken, so visitors keep
+   * clear of agents and step aside when an agent wants their spot.
+   */
+  private runVisitors(now: number): void {
+    const taken = new Set<string>();
+    for (const w of this.workers.values()) {
+      if (w.leaving) continue;
+      if (w.target) taken.add(tileKey(w.target));
+      if (!w.path.length) taken.add(tileKey({ x: Math.round(w.pos.x), y: Math.round(w.pos.y) }));
+    }
+    const bodies: VisitorBody[] = [];
+    for (const g of this.guests.values()) {
+      this.checkProgress(g, now);
+      bodies.push({ id: g.id, pos: { x: Math.round(g.pos.x), y: Math.round(g.pos.y) }, moving: g.path.length > 0 });
+    }
+    // Visitors do not walk into a room while a meeting is on there.
+    const busyRooms = new Set(this.meetings.currentMeetings().map((m) => m.roomId));
+    const directives = this.visitors.tick(now, bodies, taken, busyRooms);
+    for (const [id, d] of directives) {
+      let g = this.guests.get(id);
+      if (!g) {
+        g = this.createGuest(id, this.visitors.lookOf(id) ?? id);
+        this.guests.set(id, g);
+        this.cue('visitor', g.pos.x * TILE + TILE / 2);
+      }
+      this.applyGuest(g, d);
+    }
+    // Visitors the director let go have walked out through the door.
+    for (const g of [...this.guests.values()]) if (!directives.has(g.id)) this.removeGuest(g);
+  }
+
+  private applyGuest(g: Guest, d: VisitorDirective): void {
+    if (d.type === 'wait') {
+      // Between two stops: stand on the nearest tile.
+      g.perform = undefined;
+      const here = { x: Math.round(g.pos.x), y: Math.round(g.pos.y) };
+      if (!g.target || g.target.x !== here.x || g.target.y !== here.y) this.walkTo(g, here, 'standing');
+      return;
+    }
+    const to = d.type === 'do' ? d.at : d.to;
+    g.perform = d.type === 'do' ? d : undefined;
+    g.leaving = d.type === 'leave';
+    if (!g.target || g.target.x !== to.x || g.target.y !== to.y) this.walkTo(g, to, g.leaving ? 'leaving' : 'standing');
+  }
+
+  private createGuest(id: string, seed: string): Guest {
+    const L = this.layout!;
+    const look = visitorLook(seed);
+    const node = new Container() as Container & { isWorker?: boolean };
+    node.isWorker = true; // kept across room rebuilds, like workers
+    const shadow = new Graphics();
+    shadow.eventMode = 'none';
+    shadow.ellipse(0, -1, 5, 2).fill({ color: 0x000000, alpha: 0.28 });
+    const sprite = new Sprite();
+    sprite.eventMode = 'none';
+    sprite.anchor.set(0.5, 1);
+    node.addChild(shadow, sprite);
+    // Hover shows what it is; there is nothing to select (a visitor is not an agent).
+    node.eventMode = this.editMode ? 'none' : 'static';
+    node.hitArea = new Rectangle(-7, -CHAR_H, 14, CHAR_H);
+    const bubble = new Sprite();
+    bubble.eventMode = 'none';
+    bubble.anchor.set(0.5, 1);
+    this.fxLayer.addChild(bubble);
+    const label = new Text({
+      text: VISITOR_LABEL,
+      style: { fontFamily: LABEL_FONT, fontSize: 11, fill: SIM_SPEECH_STYLE.fill, stroke: { color: SIM_SPEECH_STYLE.border, width: 3 }, align: 'center' },
+      resolution: 2,
+    });
+    label.anchor.set(0.5, 1);
+    label.visible = false;
+    this.overlay.addChild(label);
+    const g: Guest = {
+      id,
+      look,
+      lookKey: `visitor:${seed}`,
+      pos: { x: L.door.x, y: L.rows },
+      path: [],
+      phase: 'walking',
+      arrive: 'standing',
+      facing: 'up',
+      watch: new ProgressWatch(),
+      offset: hash(id) % 5000,
+      leaving: false,
+      node,
+      sprite,
+      bubble,
+      label,
+      hovered: false,
+      speech: this.createSpeech(),
+    };
+    node.on('pointerover', () => (g.hovered = true));
+    node.on('pointerout', () => (g.hovered = false));
+    this.items.addChild(node);
+    return g;
+  }
+
+  private removeGuest(g: Guest): void {
+    this.guests.delete(g.id);
+    g.node.destroy({ children: true });
+    g.bubble.destroy();
+    g.label.destroy();
+    g.speech.node.destroy({ children: true });
+    const prefix = `${g.lookKey}|`;
+    for (const [k, t] of this.textures) {
+      if (!k.startsWith(prefix)) continue;
+      t.destroy(true);
+      this.textures.delete(k);
+    }
+  }
+
+  /** Simulated speech: lavender dashed box (SIM_SPEECH_STYLE), never the white status bubbles. */
+  private createSpeech(): Speech {
+    const node = new Container();
+    node.eventMode = 'none';
+    node.visible = false;
+    const box = new Sprite();
+    box.anchor.set(0.5, 1);
+    box.scale.set(2);
+    const text = new Text({
+      text: '',
+      style: {
+        fontFamily: LABEL_FONT,
+        fontSize: SPEECH_FONT_SIZE,
+        fill: SIM_SPEECH_STYLE.text,
+        align: 'center',
+        wordWrap: true,
+        wordWrapWidth: SPEECH_MAX_W,
+        lineHeight: SPEECH_FONT_SIZE + 2,
+      },
+      resolution: 2,
+    });
+    text.anchor.set(0.5, 1);
+    node.addChild(box, text);
+    this.overlay.addChild(node);
+    return { node, box, text };
+  }
+
+  /** Show (or hide) a simulated speech line above a character; `top` is the head (world px). */
+  private showSpeech(sp: Speech, line: string | undefined, visible: boolean, px: number, top: number, labelGap: number): void {
+    sp.node.visible = Boolean(line) && visible;
+    if (!line) {
+      sp.line = undefined;
+      return;
+    }
+    if (!sp.node.visible) return;
+    if (sp.line !== line) {
+      sp.line = line;
+      sp.text.text = line;
+      this.cue('chatter', px);
+      // Background in 2px "pixels", sized to the text in 4px steps (few cached textures).
+      const bw = Math.ceil((sp.text.width + 10) / 4) * 2;
+      const bh = Math.ceil((sp.text.height + 6) / 4) * 2;
+      sp.box.texture = this.t(`speech-${bw}x${bh}`, () => drawSpeechBubble(bw, bh));
+      sp.text.position.set(0, -6 - 3);
+    }
+    const zoom = this.cam.zoom;
+    const half = sp.box.width / 2 + 2;
+    const x = Math.min(Math.max(this.root.position.x + px * zoom, half), this.viewSize.w - half);
+    const y = Math.max(this.root.position.y + top * zoom - labelGap, sp.box.height);
+    sp.node.position.set(Math.round(x), Math.round(y));
+    sp.node.zIndex = 3;
+  }
+
+  /** Move a walker along its path by `budget` tiles, turning to face each step. */
+  private advance(w: Walker, budget: number): void {
+    while (budget > 0 && w.path.length) {
+      const next = w.path[0]!;
+      const dx = next.x - w.pos.x;
+      const dy = next.y - w.pos.y;
+      const dist = Math.hypot(dx, dy);
+      if (Math.abs(dx) > Math.abs(dy)) w.facing = dx > 0 ? 'right' : 'left';
+      else if (dy !== 0) w.facing = dy > 0 ? 'down' : 'up';
+      if (dist <= budget) {
+        w.pos.x = next.x;
+        w.pos.y = next.y;
+        w.path.shift();
+        budget -= dist;
+      } else {
+        w.pos.x += (dx / dist) * budget;
+        w.pos.y += (dy / dist) * budget;
+        budget = 0;
+      }
+    }
   }
 
   /**
@@ -1409,7 +1753,7 @@ export class OfficeScene {
    * (from the nearest tile with a way to its target), and put at its target if that fails.
    * A worker that somehow stands off its target without a path is put there as well.
    */
-  private checkProgress(w: Worker, now: number): void {
+  private checkProgress(w: Walker, now: number): void {
     const walking = w.path.length > 0;
     const action = w.watch.update(now, Math.round(w.pos.x), Math.round(w.pos.y), walking);
     if (!w.target) return;
@@ -1456,7 +1800,7 @@ export class OfficeScene {
   }
 
   /** Route a worker (planRoute: walls, furniture and the layout edge are never crossed). */
-  private walkTo(w: Worker, target: Point, arrive: Phase): void {
+  private walkTo(w: Walker, target: Point, arrive: Phase): void {
     const route = planRoute(w.pos, target, this.ok);
     if (route.place) {
       w.pos.x = route.place.x;
@@ -1469,7 +1813,7 @@ export class OfficeScene {
   }
 
   /** Put a worker on a tile at once (recovery). */
-  private place(w: Worker, at: Point, arrive: Phase): void {
+  private place(w: Walker, at: Point, arrive: Phase): void {
     w.pos.x = at.x;
     w.pos.y = at.y;
     w.path = [];
@@ -1507,29 +1851,6 @@ export class OfficeScene {
     });
     label.anchor.set(0.5, 1);
     this.overlay.addChild(label);
-    // Simulated speech: lavender dashed box (SIM_SPEECH_STYLE), never the white status bubbles.
-    const speechNode = new Container();
-    speechNode.eventMode = 'none';
-    speechNode.visible = false;
-    const speechBox = new Sprite();
-    speechBox.anchor.set(0.5, 1);
-    speechBox.scale.set(2);
-    const speechText = new Text({
-      text: '',
-      style: {
-        fontFamily: LABEL_FONT,
-        fontSize: SPEECH_FONT_SIZE,
-        fill: SIM_SPEECH_STYLE.text,
-        align: 'center',
-        wordWrap: true,
-        wordWrapWidth: SPEECH_MAX_W,
-        lineHeight: SPEECH_FONT_SIZE + 2,
-      },
-      resolution: 2,
-    });
-    speechText.anchor.set(0.5, 1);
-    speechNode.addChild(speechBox, speechText);
-    this.overlay.addChild(speechNode);
     const w: Worker = {
       view: v,
       look,
@@ -1557,7 +1878,7 @@ export class OfficeScene {
       home: { ...at },
       homeArrive: 'standing',
       hurry: false,
-      speech: { node: speechNode, box: speechBox, text: speechText },
+      speech: this.createSpeech(),
     };
     node.on('pointertap', (e) => {
       e.stopPropagation();
@@ -1693,6 +2014,78 @@ export class OfficeScene {
     return w ? (w.pres ?? this.presentation(w, now)).screen : 'off';
   }
 
+  /** Walk and draw the simulated visitors (sprite, icon bubble, hover label, simulated speech). */
+  private drawGuests(now: number, dt: number): void {
+    if (!this.guests.size) return;
+    const zoom = this.cam.zoom;
+    const ox = this.root.position.x;
+    const oy = this.root.position.y;
+    for (const g of this.guests.values()) {
+      this.advance(g, SPEED * VISITOR_PACE * dt);
+      const walking = g.path.length > 0;
+      if (!walking && g.phase === 'walking') g.phase = g.arrive;
+      const t = now + g.offset;
+      const p = !walking ? g.perform : undefined;
+      let pose: Pose;
+      let flip = false;
+      let bubble: BubbleKind | undefined;
+      if (walking) {
+        const f = (Math.floor(t / 125) % 4) as 0 | 1 | 2 | 3;
+        pose = `walk_${g.facing === 'up' ? 'up' : g.facing === 'down' ? 'down' : 'side'}_${f}`;
+        flip = g.facing === 'left';
+      } else if (p) {
+        const sp = spritePose(p.pose, p.face, { activity: p.activity, frame: this.reduceMotion ? 0 : Math.floor(t / 250) });
+        pose = sp.pose;
+        flip = sp.flip;
+        bubble = p.speech ? undefined : p.bubble;
+      } else {
+        const sp = idleStandPose(t, g.offset, this.reduceMotion);
+        pose = sp.pose;
+        flip = sp.flip;
+      }
+      if (pose !== g.shownPose) {
+        g.shownPose = pose;
+        g.sprite.texture = this.t(`${g.lookKey}|${pose}`, () => drawCharacter(g.look, pose));
+      }
+      g.sprite.scale.x = flip ? -1 : 1;
+      // Out through the door: hidden until the director lets it go (next behavior tick).
+      const gone = g.leaving && !walking;
+      const hidden = gone || Boolean(p?.hidden);
+      const onCouch = p?.pose === 'couch';
+      const px = g.pos.x * TILE + TILE / 2;
+      const py = (g.pos.y + 1) * TILE - 1 - (onCouch ? 3 : 0);
+      g.node.position.set(px, py);
+      // Layered like a standing agent: in front of a chair it sits on (chairs facing up excepted).
+      g.node.zIndex = onCouch ? (g.pos.y + 1) * TILE + 1 : py;
+      g.node.visible = !hidden;
+      g.node.alpha = g.leaving && g.path.length <= 1 ? 0.7 : 1;
+
+      const headY = py - CHAR_H;
+      g.bubble.visible = Boolean(bubble) && !hidden;
+      if (bubble && !hidden) {
+        if (bubble !== g.shownBubble) {
+          g.shownBubble = bubble;
+          g.bubble.texture = this.t(`bubble-${bubble}`, () => drawBubble(bubble));
+        }
+        g.bubble.position.set(px, headY - 1);
+      }
+
+      const sx = ox + px * zoom;
+      const sy = oy + py * zoom;
+      const onScreen = sx > -8 && sx < this.viewSize.w + 8 && sy > 0 && sy - CHAR_H * zoom < this.viewSize.h;
+      const showLabel = onScreen && !hidden && !this.editMode && (g.hovered || this.showNames);
+      g.label.visible = showLabel;
+      if (showLabel) {
+        const above = headY - (bubble ? BUBBLE_H + 1 : 1);
+        const half = g.label.width / 2 + 2;
+        g.label.position.set(Math.round(Math.min(Math.max(sx, half), this.viewSize.w - half)), Math.round(Math.max(oy + above * zoom, g.label.height)));
+        g.label.zIndex = g.hovered ? 2 : 1;
+      }
+      const line = p && !this.editMode ? p.speech : undefined;
+      this.showSpeech(g.speech, line, onScreen && !hidden, px, headY - (bubble ? BUBBLE_H + 1 : 1), showLabel ? g.label.height + 2 : 2);
+    }
+  }
+
   private frame(dtMs: number): void {
     if (!this.layout) return;
     const now = Date.now();
@@ -1707,6 +2100,12 @@ export class OfficeScene {
         this.buildRoom();
       }
       this.drawClock(new Date(now));
+      if (this.sound) {
+        // Keyboard ambience follows the agents really typing at their desks right now.
+        let typing = 0;
+        for (const w of this.workers.values()) if (w.phase === 'seated' && w.pres && TYPING_SCREENS.has(w.pres.screen)) typing++;
+        this.sound.ambience(typing, this.sky === 'night');
+      }
     }
     const dt = Math.min(dtMs, 100) / 1000;
     const occupied = this.occupied;
@@ -1729,25 +2128,7 @@ export class OfficeScene {
 
     // (Deleting the current entry while iterating a Map is safe.)
     for (const w of this.workers.values()) {
-      let budget = SPEED * (w.hurry ? 1.9 : 1) * dt;
-      while (budget > 0 && w.path.length) {
-        const next = w.path[0]!;
-        const dx = next.x - w.pos.x;
-        const dy = next.y - w.pos.y;
-        const dist = Math.hypot(dx, dy);
-        if (Math.abs(dx) > Math.abs(dy)) w.facing = dx > 0 ? 'right' : 'left';
-        else if (dy !== 0) w.facing = dy > 0 ? 'down' : 'up';
-        if (dist <= budget) {
-          w.pos.x = next.x;
-          w.pos.y = next.y;
-          w.path.shift();
-          budget -= dist;
-        } else {
-          w.pos.x += (dx / dist) * budget;
-          w.pos.y += (dy / dist) * budget;
-          budget = 0;
-        }
-      }
+      this.advance(w, SPEED * (w.hurry ? 1.9 : 1) * dt);
       if (!w.path.length) w.hurry = false;
       if (!w.path.length && w.phase === 'walking') w.phase = w.arrive;
       if (!w.path.length && w.phase === 'leaving') {
@@ -1826,29 +2207,9 @@ export class OfficeScene {
 
       // Simulated speech (local template line from the idle director / meetings).
       const line = resting && w.view.status === 'idle' && !this.editMode ? w.perform!.speech : undefined;
-      const sp = w.speech;
-      sp.node.visible = Boolean(line) && onScreen && !hidden;
-      if (line && sp.node.visible) {
-        if (sp.line !== line) {
-          sp.line = line;
-          sp.text.text = line;
-          // Background in 2px "pixels", sized to the text in 4px steps (few cached textures).
-          const bw = Math.ceil((sp.text.width + 10) / 4) * 2;
-          const bh = Math.ceil((sp.text.height + 6) / 4) * 2;
-          sp.box.texture = this.t(`speech-${bw}x${bh}`, () => drawSpeechBubble(bw, bh));
-          sp.text.position.set(0, -6 - 3);
-        }
-        const top = headY - (bubble ? BUBBLE_H + 1 : 1);
-        const labelGap = showLabel ? w.label.height + 2 : 2;
-        const half = sp.box.width / 2 + 2;
-        const x = Math.min(Math.max(ox + px * zoom, half), this.viewSize.w - half);
-        const y = Math.max(oy + top * zoom - labelGap, sp.box.height);
-        sp.node.position.set(Math.round(x), Math.round(y));
-        sp.node.zIndex = 3;
-      } else if (!line) {
-        sp.line = undefined;
-      }
+      this.showSpeech(w.speech, line, onScreen && !hidden, px, headY - (bubble ? BUBBLE_H + 1 : 1), showLabel ? w.label.height + 2 : 2);
     }
+    this.drawGuests(now, dt);
 
     // monitors, their light and the QA build lamps (textures swapped only on change)
     for (const [deskId, d] of this.desks) {
@@ -2062,5 +2423,15 @@ export class OfficeScene {
   /** Test/diagnostic hook: collaboration flights in the air. */
   debugFlights(): Array<{ id: string; kind: CollabVisual['kind']; to: string }> {
     return this.flights.map((f) => ({ id: f.id, kind: f.kind, to: f.to }));
+  }
+
+  /** Test/diagnostic hook: simulated visitors (never agents) and what they are doing. */
+  debugVisitors(): Array<{ id: string; x: number; y: number; visible: boolean; leaving: boolean; activity?: string; speech?: string; simulated: true }> {
+    return [...this.guests.values()].map((g) => {
+      const out: ReturnType<OfficeScene['debugVisitors']>[number] = { id: g.id, x: g.pos.x, y: g.pos.y, visible: g.node.visible, leaving: g.leaving, simulated: true };
+      if (g.perform) out.activity = g.perform.activity;
+      if (g.perform?.speech) out.speech = g.perform.speech;
+      return out;
+    });
   }
 }

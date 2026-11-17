@@ -1,4 +1,6 @@
 import { STATUS_META, statusCounts, type Agent, type AgentStatus } from '@agent-office/core';
+import { enableSound } from '../audio/useSound';
+import { useSettings } from '../settings';
 import type { ConnectionStatus } from '../transport';
 import type { Filters, WorkspaceOption } from '../view';
 
@@ -24,6 +26,7 @@ interface Props {
 const SHOWN: AgentStatus[] = ['working', 'waiting_permission', 'waiting_input', 'idle', 'failed', 'unknown'];
 
 export function TopBar(p: Props) {
+  const [settings, updateSettings] = useSettings();
   const counts = statusCounts(p.agents);
   const conn =
     p.connection === 'open'
@@ -75,6 +78,18 @@ export function TopBar(p: Props) {
         <label className="ctl check" title="Idle agents take coffee breaks, chat and wander. Cosmetic only: their real status is unchanged and they hurry back when work arrives.">
           <input type="checkbox" checked={p.idleLife} onChange={(e) => p.onIdleLife(e.target.checked)} />
           <span>Idle life</span>
+        </label>
+        <label className="ctl check" title="Background music and sound effects, made in this page (no audio files). Music, effects and volume are under Settings.">
+          <input
+            type="checkbox"
+            checked={settings.sound}
+            onChange={(e) => {
+              updateSettings({ sound: e.target.checked });
+              // Browsers only start audio inside a click, so start it right here.
+              if (e.target.checked) enableSound();
+            }}
+          />
+          <span>Sound</span>
         </label>
         <button className="btn" onClick={p.onOpenTasks} title="Task board">
           Tasks{p.openTasks ? <span className="num">{p.openTasks}</span> : null}

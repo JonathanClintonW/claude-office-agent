@@ -1,12 +1,13 @@
 # Simulation: idle life, dialogue and poses
 
 Agent Office shows real Claude Code agents. On top of that, idle agents get a small
-**simulated** office life: breaks, short walks, chats with template small talk. This page
-describes all of it, so you can see exactly what is real and what is decoration.
+**simulated** office life: breaks, short walks, chats with template small talk. Simulated
+visitors, people who are not agents, also walk through the office. This page describes all of
+it, so you can see exactly what is real and what is decoration.
 
-Code: `packages/ui/src/office/idleLife.ts` (director), `dialogue.ts` (template library),
-`poses.ts` (pose and desk-screen rules), `pixelArt.ts` (sprites). Tests:
-`packages/ui/test/idleLife.test.ts`, `dialogue.test.ts`, `poses.test.ts`.
+Code: `packages/ui/src/office/idleLife.ts` (director), `visitors.ts` (visitors), `dialogue.ts`
+(template library), `poses.ts` (pose and desk-screen rules), `pixelArt.ts` (sprites). Tests:
+`packages/ui/test/idleLife.test.ts`, `visitors.test.ts`, `dialogue.test.ts`, `poses.test.ts`.
 
 ## Guarantees
 
@@ -104,6 +105,74 @@ change.
   a reply, then icons, pauses or small talk (25% of the middle turns by default) and a closing
   line, one speaker per 2.6 s turn. Seated meetings show icons only.
 
+## Simulated visitors
+
+Visitors give the office some life when no agent is idle, or when no agent is running at all.
+`VisitorDirector` plans their trips, and the scene walks and draws them.
+
+- **Never an agent.** Visitors have their own ids (`visitor-<n>`) and no agent data. They wear a
+  lavender visitor badge on a lanyard and muted clothes. Hovering one, or turning names on,
+  shows `Visitor (simulated)`. They cannot be selected, and they never appear in the agent
+  list, the mini-map, room cards, counts or analytics.
+- **Agents always win.** Each tick the scene passes every tile an agent stands on or is heading
+  to. A visitor never picks such a tile. When an agent heads for a tile a visitor is using, the
+  visitor moves on in the same tick, and leaves the restroom stall too.
+- **One per place.** One visitor per tile and per spot, and at most 3 visitors at once.
+- **Same speech rules.** Lines come only from the table below (the `visit_*` families and the
+  lines shared with visitors) and appear in the dashed lavender bubble. No line refers to an
+  agent or to real work.
+- **Switches.** **Settings → Simulated visitors** (on by default). Visitors only come while
+  **Idle life** is on and the layout editor is closed. Turning either off sends every visitor
+  out through the door. History replays have none. **Idle activity** scales how often they
+  arrive.
+- **Deterministic** for an injected RNG, like idle life.
+
+A visit:
+1. The visitor comes in through the office door. A new one arrives every 20–50 s (the first
+   3–10 s after switching on), half as often while the office is in night mode.
+2. With an 80% chance it checks in at reception first (when the layout has a reception desk).
+3. It makes 1–3 more stops, chosen by weight without repeats (table below). A stop whose place
+   is taken waits for later; after 30 s with nothing free, the visitor leaves.
+4. Between stops (a 1.2–3.5 s pause), with a 50% chance, it chats once with another visitor who
+   is between stops or still on the way to one. The other visitor's stop is postponed until
+   after the chat.
+5. It leaves through the door.
+
+**Visitor meetings.** Now and then (30% of arrivals, when a meeting, collaboration or break
+room has free seats) a group of 2–3 visitors comes in together instead. They take the free
+seats closest to the room's centre and meet for 2–4 minutes once everyone has sat down, with
+icon bubbles only, one person at a time. Then they get up one after another and leave.
+- One visitor meeting at a time, on top of the 3 single visitors.
+- Members who have not sat down within 60 s are let go; the rest start without them.
+- Agents win: the moment agents meet in that room, or an agent heads for one of the seats, the
+  visitors make room.
+- Clicking a meeting, collaboration or break room shows **Hold a simulated meeting here** on
+  the room card. It starts one there at once, or says why it cannot (visitors are off, one is
+  already on, agents are meeting there, or no seats are free).
+- The room card shows a running one, for example `Visitor meeting · in progress · 3 visitors ·
+  about 3 min left`, with a `simulated` tag.
+
+| Stop | Needs | Weight | Duration | What you see |
+| --- | --- | --- | --- | --- |
+| `reception` | a reception desk | first stop | 4–7 s | Stands at the counter; usually a check-in line |
+| `visit` | a free tile in a room that is not a restroom, corridor or reception | 4 | 4–8 s | Walks into the room and looks around |
+| `coffee` | `coffee` spot | 2 | 4–5 s | Gets a coffee |
+| `water` | `water` spot | 1.5 | 3–5 s | Drinks some water |
+| `toilet` | `toilet` spot | 1.5 | 6–10 s | Hidden in the stall, whose door sign turns red. No speech |
+| `snack` | `snack` spot | 1 | 4–6 s | Eats something |
+| `window` | `window` spot | 1 | 5–8 s | Looks out, with a sun or moon icon |
+| `board` | `board` spot | 1 | 3–6 s | Reads the noticeboard |
+| `books` | `books` spot | 1 | 6–10 s | Reads a book |
+| `couch` | `couch` spot | 1 | 10–20 s | Sits on the couch |
+| `lounge` | a lounge chair | 1 | 8–16 s | Sits in the chair |
+| `whiteboard` | `whiteboard` spot | 0.5 | 4–6 s | Looks at the whiteboard |
+| `chat` | another visitor and a free pair of chat tiles | unplanned | 8–13 s | An opener, a reply, icons or small talk, and a closing line |
+| `meeting` | free seats in a meeting, collaboration or break room | group arrival or the room card button | 2–4 min | 2–3 visitors seated at a table with icon bubbles |
+
+Solo stops show one line at the start with a 40% chance (70% at reception). Chats use the
+`visit_open`, `visit_reply` and `visit_close` families, with small talk in 35% of the middle
+turns.
+
 ## Dialogue
 
 ### Facts a rule may use
@@ -144,6 +213,10 @@ A chat script has these turns:
 This is the complete vocabulary (`DIALOGUE_TABLE` and `DIALOGUE_RULES` in `dialogue.ts`). A
 test checks that every line and condition below matches the code.
 
+Who may say a line (`speakers` on each rule): agents say every family except the `visit_*`
+ones. Simulated visitors say only the `visit_*` families, `small_talk`, and the activity lines
+for coffee, water, snacks, books, the noticeboard, whiteboards, windows and the couch.
+
 | Family | Roles | Weight | Condition (real facts only) | Lines |
 | --- | --- | --- | --- | --- |
 | `open_partner_failure` | open | 6 | partner had a failed tool call in the last 20 min (and no later test pass) | Another bug? / Rough patch? / Something acting up? |
@@ -183,6 +256,11 @@ test checks that every line and condition below matches the code.
 | `act_window_night` | solo | 3 | at a window, office in night mode | Quiet night. / Look at the stars. |
 | `act_couch` | solo | 3 | on the couch | Just resting my eyes. / A short break. |
 | `act_walk` | solo | 3 | short walk | Stretching my legs. / Quick walk. |
+| `visit_open` | open | 1 | a visitor starts a chat with another visitor | First time here? / Are you visiting too? / Here for a meeting? |
+| `visit_reply` | reply | 1 | a visitor answers another visitor's opener; answers `visit_open` | Yes, just looking around. / Just dropping by. / Yes, I have a meeting soon. |
+| `visit_close` | close | 1 | a visitor ends a chat | Nice meeting you! / Enjoy your visit! / See you around! |
+| `visit_reception` | solo | 3 | a visitor checks in at reception | Hi, I'm here for a visit. / Checking in. / Where do I sign in? |
+| `visit_room` | solo | 3 | a visitor looks around a room | Nice setup in here. / So this is where it happens. / What a nice room. |
 
 ### Rules for adding lines
 
@@ -268,5 +346,5 @@ regular expressions over the sanitized command summary:
 ## Verifying
 
 ```bash
-npx vitest run --project ui idleLife dialogue poses meetings
+npx vitest run --project ui idleLife visitors dialogue poses meetings
 ```

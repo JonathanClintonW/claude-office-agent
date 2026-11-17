@@ -68,6 +68,8 @@ vi.mock('../src/office/scene', () => {
     setShowNames = record('setShowNames');
     setEditMode = record('setEditMode');
     setIdleLife = record('setIdleLife');
+    setVisitors = record('setVisitors');
+    setSound = record('setSound');
     setOpenTasks = record('setOpenTasks');
     setHourOverride = record('setHourOverride');
     setAnimationFps = record('setAnimationFps');
@@ -87,6 +89,8 @@ vi.mock('../src/office/scene', () => {
     minimapState = () => ({ zoom: 2, view: { x: 0, y: 0, w: 10, h: 8 }, workers: [] });
     roomOccupants = (id: string) => (id === 'research' ? [{ key: 'life-shop::ex1', name: 'Explore', status: 'working', simulated: false }] : []);
     roomDesks = () => ({ desks: 6, assigned: 1 });
+    roomMeeting = () => undefined;
+    startVisitorMeeting = () => 'ok';
   }
   return { OfficeScene: FakeScene };
 });
