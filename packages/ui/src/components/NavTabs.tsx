@@ -1,4 +1,3 @@
-// Primary navigation between the office and dashboard views.
 import type { ViewId } from '../views/types';
 
 const TABS: Array<[ViewId, string]> = [

@@ -3,11 +3,9 @@
  * creating a repository in the project) and scans them for secret-shaped strings,
  * machine-specific paths and the local Agent Office token.
  *
- * Usage: node scripts/audit-publish.cjs ["extra term" ...]
- *   Extra terms (e.g. your username, company or project names) are matched case-insensitively.
- *   Exit code 1 if anything is found. "Review" lines (credential-shaped test fixtures, e-mail
- *   addresses, home-directory paths with a placeholder-like name) are printed but do not fail.
- *   Findings show the file, line and kind only: matched values are never printed.
+ * Usage: node scripts/audit-publish.cjs ["extra term" ...]   (extra terms match case-insensitively)
+ *   Exit code 1 if anything is found; "review" lines (credential-shaped fixtures, e-mail addresses,
+ *   placeholder home paths) do not fail. Findings show file, line and kind: matched values are never printed.
  */
 const { execFileSync } = require('child_process');
 const fs = require('fs');

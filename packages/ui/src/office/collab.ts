@@ -49,7 +49,6 @@ export interface CollabSignal {
   label: string;
   /** Task subject, only when present in state (sanitised). */
   subject?: string;
-  /** Task key for task signals. */
   taskKey?: string;
   sessionId: string;
   /** All agents involved (parallel work lists every worker). */
@@ -70,7 +69,6 @@ export interface TeamRelation {
   to: string;
   kind: 'delegation' | 'nested_delegation' | 'subagent' | 'teammate';
   confidence: Confidence;
-  /** Short edge label. */
   label: string;
   basis: RelationBasis;
   /** Explanation, always present for inferred relations. */

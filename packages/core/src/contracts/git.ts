@@ -1,29 +1,19 @@
 /**
- * Read-only local Git status contracts.
- *
- * Served by the monitor's `git` plugin as the RPC methods `git.repos` and `git.status`.
- * The plugin runs only local, read-only git commands (`rev-parse`, `status`, `log`,
- * `diff --numstat`) and only in directories that are the working directory of an agent
- * present in the monitor state. It never contacts a remote (no fetch/pull/push), so
- * ahead/behind counts are relative to the last *locally known* upstream ref.
- *
- * Privacy: no file contents, no diffs, no author names or emails. Commit subjects are
- * secret-redacted and truncated.
+ * Contracts of the monitor's `git` plugin (RPC `git.repos`, `git.status`). It runs only local, read-only git
+ * commands, only in the cwd of an agent in the monitor state, and never contacts a remote, so ahead/behind is
+ * relative to the *locally known* upstream. Privacy: no file contents, diffs or author names/emails;
+ * commit subjects are secret-redacted and truncated.
  */
 
 /** Why git information is unavailable for a directory. */
 export type GitProblemCode =
-  /** Params missing or malformed. */
   | 'invalid_params'
   /** The directory is not the cwd of an agent in the monitor state (no arbitrary probing). */
   | 'not_tracked'
-  /** The agent's directory does not exist (any more) on this machine. */
   | 'missing_dir'
-  /** The directory is not inside a git work tree. */
   | 'not_a_repo'
   /** The `git` executable could not be started. */
   | 'git_missing'
-  /** A git command exceeded its time budget. */
   | 'timeout'
   /** Any other git failure (e.g. `safe.directory` ownership refusal, output cap). */
   | 'failed';
@@ -42,9 +32,7 @@ export interface GitFileChange {
   /** Source path of a rename or copy. */
   origPath?: string;
   kind: GitChangeKind;
-  /** Change recorded in the index. */
   staged: boolean;
-  /** Change in the working tree not yet staged. */
   unstaged: boolean;
   /** Raw two-letter porcelain code, e.g. ` M`, `A `, `??`, `UU`. */
   code: string;
@@ -95,7 +83,6 @@ export interface GitBranchInfo {
   upstreamGone?: boolean;
 }
 
-/** One session involved in a potential conflict. */
 export interface GitConflictSession {
   sessionId: string;
   /** Agents of this session whose edit tool calls targeted the file. */

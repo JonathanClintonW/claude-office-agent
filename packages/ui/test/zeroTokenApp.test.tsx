@@ -1,18 +1,11 @@
 /**
- * Whole-app zero-inference run in jsdom. The real App and OfficeStore are fed by a local stand-in
- * for the monitor that applies the same reducer to sequenced hook events and answers RPCs with the
- * REAL usage, history and git plugins, in-process, over temp directories. The PixiJS scene is
- * replaced by a recorder (no WebGL in jsdom); idle life, meetings and dialogue run headless in
- * zeroTokenUi.test.ts.
+ * Whole-app zero-inference run in jsdom. The real App and OfficeStore are fed by a local monitor
+ * stand-in (same reducer; the REAL usage, history and git plugins in-process over temp directories),
+ * and the PixiJS scene is a recorder (no WebGL in jsdom). Every network primitive throws when called
+ * and no UI timer may outlive the unmount: the recorders are the evidence, not the token counter.
  *
- * Every network primitive the page could use throws when called. The run covers start-up, a live
- * session with parallel and nested subagents and teammates, every dashboard tab, the inspector,
- * department rooms, mini-map navigation, department rules, token analytics from a transcript,
- * history and replay, then unmount and plugin shutdown. No interval or timeout created by UI code
- * may outlive the unmount. The token counter is not used as evidence: the recorders are.
- *
- * Node built-ins are reached through process.getBuiltinModule and the monitor plugins through
- * runtime imports, so the UI's DOM-only TypeScript program stays free of Node types.
+ * Node built-ins come through process.getBuiltinModule and the plugins through runtime imports,
+ * so the UI's DOM-only TypeScript program stays free of Node types.
  */
 import { act, cleanup, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -35,8 +28,6 @@ import type { HostInfo, Transport, TransportHandlers } from '../src/transport';
 
 // Generous waits: the whole app renders here, and CI machines can be busy.
 configure({ asyncUtilTimeout: 5000 });
-
-// ---------------------------------------------------------------- scene recorder (no WebGL in jsdom)
 
 const scene = vi.hoisted(() => ({
   calls: [] as Array<[string, unknown[]]>,
@@ -95,8 +86,6 @@ vi.mock('../src/office/scene', () => {
   return { OfficeScene: FakeScene };
 });
 
-// ---------------------------------------------------------------- network recorders
-
 const netCalls: string[] = [];
 const restore: Array<() => void> = [];
 
@@ -114,8 +103,6 @@ function trap(obj: object, key: string, label: string): void {
     else delete o[key];
   });
 }
-
-// ---------------------------------------------------------------- UI timer tracking
 
 type Handle = ReturnType<typeof setTimeout>;
 const realTimers = { setInterval, clearInterval, setTimeout, clearTimeout };
@@ -154,8 +141,6 @@ function trackTimers(): void {
   restore.push(() => Object.assign(globalThis, realTimers));
 }
 
-// ---------------------------------------------------------------- Node built-ins and monitor plugins
-
 interface FsLike {
   mkdtempSync(prefix: string): string;
   mkdirSync(p: string, o: { recursive: true }): void;
@@ -190,8 +175,6 @@ async function monitorPlugins(): Promise<{ usage: Plugin; history: Plugin; git: 
   };
   return { usage: await load('usage', 'usagePlugin'), history: await load('history', 'historyPlugin', { flushIntervalMs: 200 }), git: await load('git', 'gitPlugin') };
 }
-
-// ---------------------------------------------------------------- local monitor stand-in + transport
 
 class LocalMonitor {
   state: OfficeState = createInitialState();
@@ -278,8 +261,6 @@ class FakeTransport implements Transport {
   }
 }
 
-// ---------------------------------------------------------------- traffic
-
 const S1 = 'life-shop';
 const S2 = 'life-api';
 const SHOP = 'c:\\work\\shop';
@@ -328,8 +309,6 @@ function liveSpawn(m: LocalMonitor): void {
   h('PreToolUse', { tool_name: 'Agent', tool_use_id: 'pl-spawn', tool_input: { subagent_type: 'Plan', description: 'Plan the API change' } }, now - 300);
   h('SubagentStart', { agent_id: 'pl1', agent_type: 'Plan' }, now - 200);
 }
-
-// ---------------------------------------------------------------- test
 
 const ENV_KEYS = ['HOME', 'USERPROFILE', 'CLAUDE_CONFIG_DIR', 'AGENT_OFFICE_HOME'] as const;
 const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;

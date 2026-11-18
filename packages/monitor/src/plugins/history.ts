@@ -1,4 +1,3 @@
-// Event journal, session history and replay data.
 import { createReadStream, readFileSync } from 'node:fs';
 import { appendFile, mkdir, open, readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -186,8 +185,6 @@ export function historyPlugin(opts: HistoryPluginOptions = {}): HistoryPlugin {
   const now = () => (ctx ? ctx.now() : Date.now());
   const fileFor = (day: string) => join(dir, `${day}.jsonl`);
 
-  // ---------------------------------------------------------------- index
-
   function entryFor(sessionId: string, ts: number): LiveEntry {
     let L = index.get(sessionId);
     if (!L) {
@@ -348,7 +345,7 @@ export function historyPlugin(opts: HistoryPluginOptions = {}): HistoryPlugin {
     return out.sort((x, y) => x.day.localeCompare(y.day));
   }
 
-  /** Stream one day file, calling `fn` for each parsed event (lines are pre-filtered by `needle`). */
+  /** Stream one day file, calling `fn` for each parsed event (lines are pre-filtered by `needles`). */
   async function readDay(day: string, fn: (ev: MonitorEvent) => boolean | void, needles?: string[]): Promise<void> {
     let stream;
     try {
@@ -414,8 +411,6 @@ export function historyPlugin(opts: HistoryPluginOptions = {}): HistoryPlugin {
     await cleanup();
   }
 
-  // ---------------------------------------------------------------- retention
-
   async function cleanupNow(): Promise<void> {
     const today = dayOf(now());
     const cutoff = dayOf(now() - (retentionDays - 1) * DAY_MS);
@@ -465,8 +460,6 @@ export function historyPlugin(opts: HistoryPluginOptions = {}): HistoryPlugin {
     flushChain = p.catch((e) => ctx?.log(`history: cleanup failed: ${(e as Error).message}`));
     return flushChain;
   }
-
-  // ---------------------------------------------------------------- writing
 
   async function needsLeadingNewline(day: string): Promise<boolean> {
     if (newlineChecked.has(day)) return false;
@@ -528,8 +521,6 @@ export function historyPlugin(opts: HistoryPluginOptions = {}): HistoryPlugin {
     await flushChain;
   }
 
-  // ---------------------------------------------------------------- reading
-
   async function sessionEvents(L: LiveEntry): Promise<{ events: MonitorEvent[]; capped: boolean }> {
     const e = L.entry;
     const sig = `${e.events}|${e.days.join(',')}`;
@@ -583,8 +574,6 @@ export function historyPlugin(opts: HistoryPluginOptions = {}): HistoryPlugin {
     for (const b of dayBytes.values()) t += b;
     return t;
   }
-
-  // ---------------------------------------------------------------- plugin
 
   return {
     name: 'history',

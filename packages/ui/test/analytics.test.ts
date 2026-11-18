@@ -1,4 +1,3 @@
-// Analytics metrics, summaries and the Analytics view's non-canvas states.
 import { createElement } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -164,8 +163,6 @@ describe('summaries and helpers', () => {
     expect(m.summary).toBe('1 task completed, 1 left open, 2 tool failures.');
   });
 });
-
-// ---------------------------------------------------------------- view (non-canvas)
 
 const host: HostInfo = { kind: 'browser', workspaceFolders: [], canOpenFiles: false, canFocusClaude: false };
 

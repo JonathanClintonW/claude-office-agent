@@ -1,7 +1,6 @@
 /**
- * Office display settings. Local to the browser/webview; never sent to
- * any model. Existing preferences (filters, showNames, idleLife, readNotices) keep their
- * own storage keys and are untouched.
+ * Office display settings: local to the browser/webview, never sent to any model. Older
+ * preferences (filters, showNames, idleLife, readNotices) keep their own storage keys.
  */
 import { useSyncExternalStore } from 'react';
 import { DEPARTMENT_KINDS, type DepartmentKind } from '@agent-office/core';
@@ -12,7 +11,7 @@ export interface DepartmentRule {
   department: DepartmentKind;
   /** Which real, observed field to match. */
   field: 'agentType' | 'cwd' | 'name';
-  /** Case-insensitive substring. */
+  /** Case-insensitive. */
   pattern: string;
 }
 
@@ -62,16 +61,31 @@ export function defaultSettings(): OfficeSettings {
     roomLabels: true,
     minimap: true,
     reduceMotion: prefersReducedMotion(),
+    // The first matching rule wins, so specific departments come before broad ones:
+    // "security-reviewer" is Security (not QA), "deployment-planner" is DevOps (not Research).
     departmentRules: [
-      { id: 'r-explore', department: 'research', field: 'agentType', pattern: 'explore' },
-      { id: 'r-plan', department: 'research', field: 'agentType', pattern: 'plan' },
-      { id: 'r-test', department: 'qa', field: 'agentType', pattern: 'test' },
-      { id: 'r-review', department: 'qa', field: 'agentType', pattern: 'review' },
       { id: 'r-security', department: 'security', field: 'agentType', pattern: 'security' },
       { id: 'r-devops', department: 'devops', field: 'agentType', pattern: 'devops' },
       { id: 'r-deploy', department: 'devops', field: 'agentType', pattern: 'deploy' },
+      { id: 'r-test', department: 'qa', field: 'agentType', pattern: 'test' },
+      { id: 'r-review', department: 'qa', field: 'agentType', pattern: 'review' },
+      { id: 'r-explore', department: 'research', field: 'agentType', pattern: 'explore' },
+      { id: 'r-plan', department: 'research', field: 'agentType', pattern: 'plan' },
     ],
   };
+}
+
+/** Rule ids of the first default list (broad rules first); saved unchanged copies are upgraded. */
+const LEGACY_DEFAULT_ORDER = ['r-explore', 'r-plan', 'r-test', 'r-review', 'r-security', 'r-devops', 'r-deploy'];
+
+/** True when `rules` is the untouched first default list (same ids, order, fields and patterns). */
+function isLegacyDefault(rules: readonly DepartmentRule[]): boolean {
+  if (rules.length !== LEGACY_DEFAULT_ORDER.length) return false;
+  const current = new Map(defaultSettings().departmentRules.map((r) => [r.id, r]));
+  return rules.every((r, i) => {
+    const d = current.get(r.id);
+    return r.id === LEGACY_DEFAULT_ORDER[i] && d !== undefined && d.department === r.department && d.field === r.field && d.pattern === r.pattern;
+  });
 }
 
 function sanitize(raw: unknown): OfficeSettings {
@@ -102,7 +116,7 @@ function sanitize(raw: unknown): OfficeSettings {
     roomLabels: typeof r.roomLabels === 'boolean' ? r.roomLabels : d.roomLabels,
     minimap: typeof r.minimap === 'boolean' ? r.minimap : d.minimap,
     reduceMotion: typeof r.reduceMotion === 'boolean' ? r.reduceMotion : d.reduceMotion,
-    departmentRules: rules,
+    departmentRules: isLegacyDefault(rules) ? d.departmentRules : rules,
   };
 }
 

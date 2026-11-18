@@ -72,7 +72,7 @@ export type EventBody =
   | { kind: 'PostCompact'; trigger?: string }
   /** A hook event this build does not model. Recorded, never used to infer status. */
   | { kind: 'UnknownHook'; hookEventName: string }
-  // ---- Monitor-generated events (read-only discovery and housekeeping) ----
+  // Monitor-generated events (read-only discovery and housekeeping).
   | {
       kind: 'RegistryStatus';
       pid: number;
@@ -189,11 +189,8 @@ const MAX_CLOCK_SKEW_MS = 60_000;
 const MAX_EVENT_AGE_MS = 7 * 24 * 3600_000;
 
 /**
- * Validate and normalise a hook payload.
- *
- * Accepts either the raw hook JSON (from an HTTP hook) or the forwarder envelope
- * `{ v: 1, ts, payload }`. Unknown fields are ignored; required identifiers are
- * validated strictly so malformed input can never create phantom agents.
+ * Validate and normalise a hook payload: raw hook JSON (HTTP hook) or the forwarder envelope `{ v: 1, ts, payload }`.
+ * Unknown fields are ignored; required identifiers are validated strictly so malformed input never creates phantom agents.
  */
 export function normalizeHookPayload(input: unknown, receivedAt: number): NormalizeResult {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'payload must be an object' };

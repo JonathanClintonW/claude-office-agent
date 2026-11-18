@@ -8,8 +8,6 @@ import { WALL_ROWS, roomContains, type AgentStatus, type OfficeLayout, type Room
 const TILE = 16;
 const OUTLINE = '#17141f';
 
-// ------------------------------------------------------------------ pure helpers
-
 /** Neighbour bits for auto-tiling. */
 export const N = 1;
 export const E = 2;
@@ -21,7 +19,6 @@ export function maskOf(has: (x: number, y: number) => boolean, x: number, y: num
 }
 
 export interface RoomStyle {
-  /** Floor finish. */
   floor: 'wood' | 'carpet' | 'vinyl' | 'panel' | 'checker' | 'smalltile' | 'marble';
   base: string;
   alt: string;
@@ -63,8 +60,6 @@ export type ConsoleTheme = 'cctv' | 'graphs' | 'dash';
 export function consoleTheme(kind: RoomKind | undefined): ConsoleTheme {
   return kind === 'security' ? 'cctv' : kind === 'devops' ? 'graphs' : 'dash';
 }
-
-// ------------------------------------------------------------------ canvas helpers
 
 type Px = (x: number, y: number, w: number, h: number, c: string) => void;
 
@@ -123,8 +118,6 @@ function mix(hex: string, f: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-// ------------------------------------------------------------------ floors
-
 function paintFloorTile(px: Px, ox: number, oy: number, st: RoomStyle, x: number, y: number): void {
   const r = seeded(hashXY(x, y, 77));
   switch (st.floor) {
@@ -181,13 +174,13 @@ function paintFloorTile(px: Px, ox: number, oy: number, st: RoomStyle, x: number
       break;
     }
     case 'wood':
-      break; // drawn by the caller with the classic floor
+      break; // drawn by the caller
   }
 }
 
 /**
  * The whole floor (rows WALL_ROWS..rows-1) in one canvas: room finishes inside rooms, the
- * classic wooden floor elsewhere. One texture keeps big offices cheap to draw.
+ * wooden floor elsewhere. One texture keeps big offices cheap to draw.
  */
 export function drawFloorMap(layout: Pick<OfficeLayout, 'cols' | 'rows' | 'rooms'>, wood: (x: number, y: number) => HTMLCanvasElement): HTMLCanvasElement {
   const [c, ctx, px] = canvas(layout.cols * TILE, (layout.rows - WALL_ROWS) * TILE);
@@ -215,8 +208,6 @@ export function drawFloorMap(layout: Pick<OfficeLayout, 'cols' | 'rows' | 'rooms
   }
   return c;
 }
-
-// ------------------------------------------------------------------ walls
 
 const CAP = '#cbb994';
 const CAP_HI = '#e6dabe';
@@ -255,8 +246,6 @@ export function drawInteriorWall(mask: number): HTMLCanvasElement {
   }
   return c;
 }
-
-// ------------------------------------------------------------------ department furniture
 
 /** Server rack (16×30) with blinking status LEDs. */
 export function drawServerRack(variant: number, frame: number): HTMLCanvasElement {

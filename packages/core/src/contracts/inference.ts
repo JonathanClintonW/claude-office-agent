@@ -1,9 +1,6 @@
 /**
- * Zero-extra-inference diagnostics.
- * Published by the monitor's `inference` plugin in `MonitorMeta.plugins.inference`.
- *
- * Scope: these counters describe what the Agent Office runtime itself does. They say nothing
- * about the tokens the user's own Claude Code sessions consume, which is outside the office.
+ * Zero-extra-inference diagnostics. The counters cover only what the Agent Office runtime itself does,
+ * never the tokens the user's own Claude Code sessions consume.
  */
 export interface InferenceDiagnostics {
   /** 'active' when the runtime guard is installed in this process. */

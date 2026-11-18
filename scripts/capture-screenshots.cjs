@@ -1,23 +1,16 @@
 /**
- * Capture the README screenshots (and a few short GIFs) from the real, built app with SIMULATED
- * demo data.
+ * Capture the README screenshots (and a few short GIFs) from the real, built app with SIMULATED demo data.
  *
- *  1. Starts an ISOLATED monitor child process (temp AGENT_OFFICE_HOME, temp Claude config dir,
- *     temp user profile, free port, --no-discovery) from packages/monitor/dist/cli.cjs. Your real
- *     monitor, ~/.agent-office and Claude Code settings are never touched or shown.
- *  2. Feeds it the `showcase` demo scenario: through `cli.cjs simulate --scenario showcase` when
- *     the built CLI offers it, otherwise from packages/monitor/src/simulate.ts (transpiled with the
- *     project's esbuild) posted to the monitor's hook endpoint exactly as `simulate` does, and as a
- *     last resort four overlapping `cli.cjs simulate` runs of the default scenario. Every demo
- *     session id starts with `sim-` and the UI labels it SIMULATED.
- *  3. Opens the office in headless Microsoft Edge (every non-loopback request is aborted), with
- *     `?hour=14` for daylight and the Idle frequency setting at High, so idle life and simulated
- *     meetings start sooner. It waits for real UI states through `window.__officeScene` and
- *     `window.__officeStore`, and only captures states that actually occur: a shot whose state
- *     does not show up within its timeout is skipped and reported, never staged.
- *  4. Writes PNGs (and, unless --no-gif, GIF89a animations encoded by this script) to the output
- *     directory, prints a JSON summary, and always stops its own child processes and removes its
- *     temp directory.
+ *  1. Starts an ISOLATED monitor (temp AGENT_OFFICE_HOME, Claude config dir and user profile, free port,
+ *     --no-discovery). Your real monitor, ~/.agent-office and Claude Code settings are never touched or shown.
+ *  2. Feeds it the `showcase` scenario: via `cli.cjs simulate --scenario showcase` when the built CLI offers
+ *     it, otherwise from packages/monitor/src/simulate.ts posted to the hook endpoint exactly as `simulate`
+ *     does, and as a last resort four overlapping default `simulate` runs. Demo session ids start with `sim-`.
+ *  3. Opens the office in headless Microsoft Edge (non-loopback requests aborted) at `?hour=14` with Idle
+ *     frequency High, so idle life starts sooner. Only states that actually occur are captured: a shot whose
+ *     state does not show up within its timeout is skipped and reported, never staged.
+ *  4. Writes PNGs (and GIF89a animations unless --no-gif) and a JSON summary; always stops its own child
+ *     processes and removes its temp directory.
  *
  * Usage: node scripts/capture-screenshots.cjs [--out docs/assets/screenshots] [--no-gif]
  *                                             [--only name,name] [--headed] [--keep-temp]
@@ -49,8 +42,6 @@ const KEEP_TEMP = argv.includes('--keep-temp');
 const log = (...a) => console.error('[capture]', ...a);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const wanted = (name) => !ONLY || ONLY.has(name);
-
-// ---------------------------------------------------------------- small helpers
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -147,7 +138,7 @@ function isLoopbackUrl(raw) {
   }
 }
 
-// ---------------------------------------------------------------- PNG decoding (screenshots → RGBA)
+// PNG decoding (screenshots → RGBA)
 
 /** Decode an 8-bit, non-interlaced RGB/RGBA PNG (what the browser screenshot produces). */
 function decodePng(buf) {
@@ -205,7 +196,7 @@ function decodePng(buf) {
   return { width, height, rgb };
 }
 
-// ---------------------------------------------------------------- GIF89a encoding
+// GIF89a encoding
 
 /** Median-cut palette (≤ maxColors) over a colour histogram. */
 function medianCut(hist, maxColors) {
@@ -399,8 +390,6 @@ function encodeGif(frames, width, height, delaysMs) {
   return Buffer.concat(parts);
 }
 
-// ---------------------------------------------------------------- main
-
 async function main() {
   const missing = [CLI, UI_INDEX].filter((f) => !fs.existsSync(f));
   if (missing.length) {
@@ -458,7 +447,6 @@ async function main() {
   }, 15 * 60_000);
 
   try {
-    // ---------------------------------------------------------------- isolated monitor
     const port = await freePort();
     monitor = child('monitor', [CLI, 'start', '--port', String(port), '--home', dirs.home, '--no-discovery'], env);
     const t0 = Date.now();
@@ -471,7 +459,6 @@ async function main() {
     }
     log(`isolated monitor on 127.0.0.1:${port}`);
 
-    // ---------------------------------------------------------------- browser
     browser = await chromium.launch({
       channel: 'msedge',
       headless: !HEADED,
@@ -498,10 +485,6 @@ async function main() {
     await page.waitForFunction(() => Boolean(window.__officeScene && window.__officeStore && window.__officeStore.getSnapshot().synced), null, { timeout: 30_000 });
     await page.mouse.move(VIEWPORT.width - 4, 4);
 
-    // ---------------------------------------------------------------- simulated demo traffic
-    // Preferred: the CLI's showcase scenario. Otherwise the same scenario from the monitor's source
-    // (simulate.ts), posted through the same hook endpoint the CLI uses. Last resort: overlapping
-    // runs of the CLI's default scenario.
     const help = spawnSync(process.execPath, [CLI, '--help'], { env, encoding: 'utf8', windowsHide: true });
     const cliShowcase = /--scenario\b/.test(`${help.stdout}${help.stderr}`) && /showcase/.test(`${help.stdout}${help.stderr}`);
     const source = cliShowcase ? null : loadShowcaseFromSource(tmp);
@@ -533,7 +516,6 @@ async function main() {
     log(`SIMULATED traffic started: ${summary.scenario}`);
     const since = () => Date.now() - simStart;
 
-    // ---------------------------------------------------------------- page helpers
     const evaluate = (fn, arg) => page.evaluate(fn, arg).catch(() => null);
     const workers = () =>
       evaluate(() => {
@@ -624,10 +606,8 @@ async function main() {
       log(`skipped ${name}: ${why}`);
     };
     /**
-     * Record `seconds` of the page region `clip` for a GIF: real frames from the browser's own
-     * screencast (as fast as the compositor produces them), with their real timing. Encoding is
-     * CPU-heavy, so it is deferred to the end of the run (`encodeGifs`) to keep the demo feed and
-     * the shot timing undisturbed.
+     * Record `seconds` of the page region `clip` for a GIF from the browser's own screencast, with real timing.
+     * Encoding is CPU-heavy, so it is deferred to `encodeGifs` to keep the demo feed and shot timing undisturbed.
      */
     const cdp = await context.newCDPSession(page);
     const gifJobs = [];
@@ -675,7 +655,7 @@ async function main() {
       for (let i = 0; i < rgb.length; i += 3) if (rgb[i] === 0xf1 && rgb[i + 1] === 0xec && rgb[i + 2] === 0xff) n++;
       return n;
     };
-    /** Clip (page pixels) of the office canvas around tile (x, y) at the current zoom. */
+    /** Clip (page pixels) of at most w×h, centred on the office canvas. */
     const clipAround = async (w, h) => {
       const box = await officeBox();
       const cw = Math.min(w, Math.floor(box.width));
@@ -683,17 +663,14 @@ async function main() {
       return { x: Math.round(box.x + (box.width - cw) / 2), y: Math.round(box.y + (box.height - ch) / 2), width: cw, height: ch };
     };
 
-    // ---------------------------------------------------------------- 1. agents arriving (GIF)
     await fit();
     if (GIFS && wanted('agents-arriving')) {
       const box = await officeBox();
       await gif('agents-arriving', 'SIMULATED sessions and their subagents walk in from the door to their desks', { x: Math.round(box.x), y: Math.round(box.y), width: Math.floor(box.width), height: Math.floor(box.height) }, 8, 125);
     }
 
-    // ---------------------------------------------------------------- 2. busy office
-    // Agents need ~15 s to walk from the door to a desk, so wait until enough of them are seated
-    // while still active (the showcase scenario is long enough for that; the short default
-    // scenario is not, so it falls back to "many agents active, some still walking").
+    // Agents need ~15 s to walk from the door to a desk; the short default scenario cannot wait for
+    // enough seated active agents, so it falls back to "many agents active, some still walking".
     const ACTIVE = new Set(['working', 'waiting_permission', 'waiting_input']);
     const inRoom = (w, r) => r && w.x >= r.x && w.x < r.x + r.w && w.y >= r.y && w.y < r.y + r.h;
     const seatedActive = (ws, room) => ws.filter((w) => ACTIVE.has(w.status) && w.phase === 'seated' && (!room || inRoom(w, room)));
@@ -725,7 +702,6 @@ async function main() {
       skip('subagents-at-work', 'the office never had enough active agents');
     }
 
-    // ---------------------------------------------------------------- 3. inspector on an agent that needs permission
     if (wanted('inspector')) {
       const target = await waitFor('an agent waiting for permission', async () => (await workers()).find((w) => w.status === 'waiting_permission'), 45_000);
       if (target) {
@@ -743,7 +719,6 @@ async function main() {
       } else skip('inspector', 'no agent was waiting for permission');
     }
 
-    // ---------------------------------------------------------------- 4. dashboard views
     if (wanted('team-view')) {
       const ok = await waitFor('working teammates', async () => (await workers()).filter((w) => w.kind === 'teammate' && w.status === 'working').length >= 2, 30_000);
       if (ok) {
@@ -784,7 +759,6 @@ async function main() {
       await tab('Office');
     }
 
-    // ---------------------------------------------------------------- 5. idle life and simulated meetings
     await waitFor(
       'the simulated sessions to finish',
       async () => {
@@ -862,7 +836,6 @@ async function main() {
       else skip(n, 'the state did not occur within 5 minutes');
     }
 
-    // ---------------------------------------------------------------- 6. history and replay
     if (wanted('history-replay')) {
       await tab('History');
       const rows = 'table[aria-label="Recorded sessions"] button.link';
@@ -888,7 +861,6 @@ async function main() {
       await tab('Office');
     }
 
-    // ---------------------------------------------------------------- 7. encode the recorded GIFs
     if (gifJobs.length) {
       log(`encoding ${gifJobs.length} GIF(s)…`);
       encodeGifs();

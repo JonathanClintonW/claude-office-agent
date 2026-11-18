@@ -30,7 +30,7 @@ import {
   type WorkInput,
 } from '../src/office/poses';
 
-// ------------------------------------------------------------------ fake 2D canvas (jsdom has none)
+// Fake 2D canvas: jsdom has none.
 
 const pixels = new WeakMap<HTMLCanvasElement, Uint8ClampedArray>();
 const realGetContext = HTMLCanvasElement.prototype.getContext;
@@ -209,8 +209,6 @@ describe('drawSpeechBubble', () => {
   });
 });
 
-// ------------------------------------------------------------------ real working states
-
 const work = (over: Partial<WorkInput>) => workPresentation({ status: 'working', ...over });
 
 describe('workPresentation', () => {
@@ -338,8 +336,6 @@ describe('tool classification', () => {
     expect(failureKind('Edit')).toBe('tool');
   });
 });
-
-// ------------------------------------------------------------------ idle variety
 
 describe('idle variety (neutral poses only)', () => {
   /** Poses that signal a real state: an idle agent must never show them. */

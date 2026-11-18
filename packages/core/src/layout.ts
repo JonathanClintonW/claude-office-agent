@@ -150,8 +150,6 @@ function overlaps(a: Pick<Room, 'x' | 'y' | 'w' | 'h'>, b: Pick<Room, 'x' | 'y' 
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
 
-// ------------------------------------------------------------------ default layouts
-
 const MAP_LEGEND: Record<string, FurnitureType | 'wall' | undefined> = {
   '.': undefined,
   '#': 'wall',
@@ -202,12 +200,7 @@ export function layoutFromMap(map: readonly string[]): { items: FurnitureItem[];
   return { items, walls };
 }
 
-/**
- * The default office: 44×30 tiles with department rooms along the back wall, a corridor,
- * security/collaboration/meeting/break rooms in the middle, and restrooms, reception (main
- * door) and a huddle room at the front. Legend: see MAP_LEGEND (D desk; its chair is the
- * free tile below it).
- */
+/** The default 44×30 department office. Legend: MAP_LEGEND (a desk's chair is the free tile below it). */
 const DEFAULT_MAP = [
   // x: 0         1         2         3         4
   //    01234567890123456789012345678901234567890123
@@ -272,7 +265,7 @@ export function defaultLayout(): OfficeLayout {
   };
 }
 
-/** The original single-room open office (23×14), kept as a template for small screens. */
+/** Single-room open office (23×14), a template for small screens. */
 export function openOfficeLayout(): OfficeLayout {
   const items: FurnitureItem[] = [];
   let n = 0;
@@ -302,8 +295,6 @@ export function openOfficeLayout(): OfficeLayout {
   return { version: 1, name: 'Open office', cols: 23, rows: 14, door: { x: 11 }, items, zones: [] };
 }
 
-// ------------------------------------------------------------------ validation
-
 export type LayoutResult = { ok: true; layout: OfficeLayout } | { ok: false; error: string };
 
 const ID = /^[A-Za-z0-9_-]{1,40}$/;
@@ -314,10 +305,8 @@ function int(v: unknown, min: number, max: number): number | undefined {
 }
 
 /**
- * Strict validation: layouts arrive from the UI and are written to disk by the monitor.
- * Version-1 layouts without walls/rooms validate exactly as before (and come back without
- * those keys). Layouts with interior walls must also keep every desk chair reachable from
- * the door.
+ * Strict validation: layouts arrive from the UI and are written to disk by the monitor. Layouts without
+ * walls/rooms come back without those keys; with interior walls every desk chair must be reachable from the door.
  */
 export function validateLayout(input: unknown): LayoutResult {
   if (!input || typeof input !== 'object') return { ok: false, error: 'layout must be an object' };
@@ -424,8 +413,7 @@ export function validateLayout(input: unknown): LayoutResult {
   if (walls.length) layout.walls = walls;
   if (rooms.length) layout.rooms = rooms;
 
-  // With interior walls, every desk must be reachable on foot from the door. (Older wall-less
-  // layouts are not checked so that saved user layouts keep loading unchanged.)
+  // Wall-less layouts are not checked so that saved user layouts keep loading unchanged.
   if (walls.length) {
     const reach = reachableTiles(layout);
     for (const it of items) {

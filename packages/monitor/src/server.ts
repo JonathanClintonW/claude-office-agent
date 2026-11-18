@@ -40,7 +40,7 @@ export interface MonitorOptions {
   port: number;
   token: string;
   claudeDirs: string[];
-  /** Directory with the built UI (index.html + assets). Optional. */
+  /** Directory with the built UI (index.html + assets). */
   uiDir?: string;
   /** Extra browser origins allowed to open the WebSocket (e.g. the Vite dev server). */
   allowedOrigins?: string[];
@@ -295,8 +295,6 @@ export function createMonitor(opts: MonitorOptions): Monitor {
     return r;
   }
 
-  // ---------------- discovery ----------------
-
   function drain(): void {
     const items = drainSpool(opts.home);
     if (!items.length) return;
@@ -443,8 +441,6 @@ export function createMonitor(opts: MonitorOptions): Monitor {
       broadcast({ type: 'meta', meta: m });
     }
   }
-
-  // ---------------- HTTP ----------------
 
   function allowedHost(req: IncomingMessage): boolean {
     const host = (req.headers.host ?? '').toLowerCase();

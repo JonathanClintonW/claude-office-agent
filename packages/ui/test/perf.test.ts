@@ -196,7 +196,7 @@ describe('UI performance', () => {
         const di = d.get(a.key);
         if (!di) continue;
         if (di.type === 'do') kinds.add(di.activity);
-        // Teleport to the target, like the existing idle-life tests.
+        // Teleport to the target, like the idle-life tests.
         const to = di.type === 'home' ? a.home : di.type === 'go' ? di.to : di.at;
         if (to.x !== a.home.x || to.y !== a.home.y) away++;
         a.pos = { ...to };

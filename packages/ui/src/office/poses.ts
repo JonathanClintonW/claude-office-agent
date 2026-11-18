@@ -35,7 +35,6 @@ export interface SpritePoseOptions {
   frame?: number;
 }
 
-/** Map a provider's semantic pose + facing to a sprite pose that drawCharacter() supports. */
 export function spritePose(pose: ActorPose, face: Face, opts: SpritePoseOptions = {}): SpritePose {
   const side = face === 'left' || face === 'right';
   const flip = face === 'left';
@@ -65,8 +64,7 @@ export function spritePose(pose: ActorPose, face: Face, opts: SpritePoseOptions 
 }
 
 /**
- * Animate a seated desk pose over time (t in ms, include a per-worker offset). Speeds match
- * the scene's existing blink rates: typing 170 ms, permission 550 ms, cheer 300 ms.
+ * Animate a seated desk pose over time (t in ms, include a per-worker offset).
  */
 export function seatedFrame(pose: Pose, t: number): Pose {
   switch (pose) {
@@ -84,8 +82,6 @@ export function seatedFrame(pose: Pose, t: number): Pose {
       return pose;
   }
 }
-
-// ------------------------------------------------------------------ idle variety (simulated, neutral poses only)
 
 /** Seated poses an idle agent cycles through at its desk. None of them signals a real state. */
 export const IDLE_DESK_POSES = ['sit', 'sit_stretch', 'sit_sip'] as const satisfies readonly Pose[];
@@ -133,8 +129,6 @@ export function idleStandPose(t: number, variant = 0, still = false): SpritePose
   return STAND;
 }
 
-// ------------------------------------------------------------------ tool classification (local rules)
-
 export type ToolCategory = 'read' | 'search' | 'edit' | 'test' | 'build' | 'command' | 'wait' | 'other';
 
 const READ_TOOLS = new Set(['Read', 'NotebookRead', 'WebFetch']);
@@ -161,7 +155,6 @@ export function looksLikeBuild(summary: string | undefined): boolean {
   return !!summary && !looksLikeTest(summary) && BUILD.test(summary);
 }
 
-/** Category of a tool call from its name and sanitized summary. */
 export function classifyTool(toolName: string | undefined, summary?: string): ToolCategory {
   if (!toolName) return 'other';
   if (READ_TOOLS.has(toolName)) return 'read';
@@ -177,8 +170,6 @@ export function failureKind(toolName: string, summary?: string): 'test' | 'build
   const c = classifyTool(toolName, summary);
   return c === 'test' ? 'test' : c === 'build' ? 'build' : 'tool';
 }
-
-// ------------------------------------------------------------------ desk presentation for real states
 
 export type WorkMode =
   | 'reading'
@@ -227,7 +218,6 @@ export interface WorkInput {
   status: AgentStatus;
   /** Reducer statusDetail, verbatim. */
   detail?: string;
-  /** Name of the tool that is currently running, if any. */
   toolName?: string;
   /** Sanitized summary of that tool call (falls back to `detail`, which the reducer sets to it). */
   toolSummary?: string;

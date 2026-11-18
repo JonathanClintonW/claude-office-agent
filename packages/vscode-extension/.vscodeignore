@@ -1,5 +1,4 @@
-# Allowlist: package only the bundles, the built UI (with its font licences), the manifest,
-# the README and licence/notice files. Sources, tests, scripts and tsconfig never ship.
+# Allowlist: sources, tests, scripts and tsconfig never ship.
 # vsce applies every "!" pattern after all ignore patterns, so keep the list explicit.
 **
 !dist/extension.cjs

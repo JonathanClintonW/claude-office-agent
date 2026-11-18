@@ -1,7 +1,5 @@
-// Rule-based problem detection from the observed office state.
-//
-// Pure functions only. Every item is derived from a recorded event or status; nothing is
-// inferred by a model. Rules that are heuristics carry a `heuristic` explanation that the UI shows.
+// Rule-based problem detection from the observed office state; nothing is inferred by a model.
+// Heuristic rules carry a `heuristic` explanation that the UI shows.
 import {
   baseName,
   formatDuration,
@@ -147,7 +145,6 @@ export function detectIssues(state: OfficeState, now: number, opts: DetectOption
     const base = { agentKey: a.key, sessionId: a.sessionId, simulated: isSimulated(a), ...projectOf(state, a) };
     const terminal = TERMINAL_STATUSES.has(a.status);
 
-    // ---- tool outcomes
     const failuresByCall = new Map<string, { tool: ToolCall; times: number[] }>();
     const unknownTools: ToolCall[] = [];
     for (const t of a.tools) {
@@ -241,7 +238,6 @@ export function detectIssues(state: OfficeState, now: number, opts: DetectOption
       });
     }
 
-    // ---- current status
     if (a.status === 'failed') {
       const notice = state.notices.find((n) => n.kind === 'stop_failure' && n.agentKey === a.key && n.ts === a.statusAt);
       if (!notice) {
@@ -328,7 +324,7 @@ export function detectIssues(state: OfficeState, now: number, opts: DetectOption
     }
   }
 
-  // ---- turn failures recorded as notices (history survives a later recovery)
+  // Turn failures recorded as notices: the history survives a later recovery.
   for (const n of state.notices) {
     if (n.kind !== 'stop_failure') continue;
     const a = state.agents[n.agentKey];

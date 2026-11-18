@@ -28,7 +28,7 @@ export type Pose =
   | 'couch'
   | 'drink'
   | 'side_talk'
-  // ---- simulated idle-life / meeting poses (front, side or back views)
+  // simulated idle-life / meeting poses (front, side or back views)
   /** Front, holding an open book. */
   | 'read'
   /** Front, a snack at the mouth. */
@@ -52,7 +52,7 @@ export type Pose =
   | 'water'
   /** Front, talking with a small gesture. */
   | 'talk_front'
-  // ---- seated desk poses for real working states (back view, see poses.ts workPresentation)
+  // seated desk poses for real working states (back view, see poses.ts workPresentation)
   /** Hand on the mouse, scrolling (two frames). */
   | 'sit_read'
   | 'sit_read1'
@@ -118,7 +118,7 @@ export interface Look {
 
 const OUTLINE = '#17141f';
 
-// ------------------------------------------------------------------ colour helpers
+// --- colour helpers
 
 function rgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
@@ -190,7 +190,7 @@ export function workspaceColor(key: string): string {
   return FAMILY[hash(key) % FAMILY.length]!;
 }
 
-// ------------------------------------------------------------------ canvas helpers
+// --- canvas helpers
 
 type Px = (x: number, y: number, w: number, h: number, c: string) => void;
 
@@ -234,7 +234,7 @@ function rng(seed: number): () => number {
   };
 }
 
-// ------------------------------------------------------------------ characters
+// --- characters
 
 interface Tones {
   hi: string;
@@ -267,7 +267,7 @@ export function drawCharacter(look: Look, pose: Pose): HTMLCanvasElement {
   const headDy = (slump ? 2 : 0) + (pose === 'type1' || pose === 'read' || pose === 'sit_lean' ? 1 : 0);
   const bodyDy = slump ? 1 : 0;
 
-  // ---------- legs & shoes (frames 1/3 lift one leg)
+  // legs & shoes (frames 1/3 lift one leg)
   const leg = (x: number, lift: number, shoeDx: number) => {
     px(x, 18 + bodyDy, 3, 4 - lift, pants.base);
     px(x, 18 + bodyDy, 1, 4 - lift, pants.hi);
@@ -299,7 +299,7 @@ export function drawCharacter(look: Look, pose: Pose): HTMLCanvasElement {
     leg(8, frame === 3 ? 1 : 0, 0);
   }
 
-  // ---------- torso
+  // torso
   const ty = 11 + bodyDy;
   const tx = facing === 'side' ? 5 : 4;
   const tw = facing === 'side' ? 6 : 8;
@@ -334,7 +334,7 @@ export function drawCharacter(look: Look, pose: Pose): HTMLCanvasElement {
     px(7, ty + 1, 2, 4, shirt.lo); // spine shadow
   }
 
-  // ---------- arms
+  // arms
   const sleeve = look.outfit === 1 ? 2 : 4;
   const armDown = (x: number, dy: number) => {
     px(x, ty + dy, 1, sleeve, shirt.lo);
@@ -510,7 +510,7 @@ export function drawCharacter(look: Look, pose: Pose): HTMLCanvasElement {
     }
   }
 
-  // ---------- neck & head
+  // neck & head
   const hy = 1 + headDy;
   if (facing !== 'up') px(7, 10 + bodyDy, 2, 1, skin.lo);
   if (facing === 'up') {
@@ -600,7 +600,7 @@ export function drawCharacter(look: Look, pose: Pose): HTMLCanvasElement {
     px(10, hy + 2, 2, 2, skin.base); // scratching the head
   }
 
-  // ---------- role accessories
+  // role accessories
   if (look.role === 'subagent' && look.accent) {
     const cap = tones(look.accent);
     px(4, Math.max(0, hy - 1), 8, 3, cap.base);
@@ -637,7 +637,7 @@ export function drawCharacter(look: Look, pose: Pose): HTMLCanvasElement {
   return c;
 }
 
-// ------------------------------------------------------------------ room
+// --- room
 
 export function drawFloor(x: number, y: number): HTMLCanvasElement {
   const [c, , px] = canvas(TILE, TILE);
@@ -1160,7 +1160,7 @@ export function drawLight(size: number): HTMLCanvasElement {
   return c;
 }
 
-// ------------------------------------------------------------------ bubbles
+// --- bubbles
 
 export const BUBBLE_W = 13;
 export const BUBBLE_H = 11;

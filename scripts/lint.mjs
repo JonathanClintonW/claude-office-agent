@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 /**
- * Repository lint. No extra dependencies: TypeScript itself plus a few practical rules
- * implemented here.
+ * Repository lint with no extra dependencies: TypeScript plus a few rules implemented here.
  *
- *   1. TypeScript with stricter flags, per package tsconfig (core, monitor, ui, vscode-extension):
- *        tsc -p packages/<pkg> --noEmit --noUnusedLocals --noUnusedParameters
- *            --noImplicitReturns --noFallthroughCasesInSwitch
+ *   1. `tsc -p packages/<pkg> --noEmit` with STRICT_FLAGS for core, monitor, ui and vscode-extension.
  *   2. Repo rules (comments and string literals are tokenised so prose never trips a rule):
  *        no-debugger          `debugger` statements anywhere (src, tests, scripts)
  *        no-focused-tests     `.only(` in tests
@@ -17,16 +14,12 @@
  *        no-ts-suppress       `@ts-ignore` / `@ts-nocheck` (use `@ts-expect-error <reason>`)
  *   3. Documentation and repository hygiene (plain text, every line):
  *        docs-links           relative links and image paths in README.md, CONTRIBUTING.md,
- *                             docs/**\/*.md and packages/*\/README.md must resolve to a file in the
- *                             repository, with the exact letter case (GitHub is case-sensitive),
- *                             and never into node_modules or build output. Links inside code
- *                             blocks/spans, URLs with a scheme and same-page anchors are not checked.
- *                             `--anchors` also checks #fragments against the target's headings.
- *        no-internal-notes    development-process markers left in sources, scripts, docs and
- *                             manifests: "Workstream <n>", "worker <A-G|1-7>", "owned by the lead",
- *                             "lead-owned", "(lead)", "owned by others". Words such as "lead" or
- *                             "worker" alone are fine (agent-team leads, office workers).
- *                             Allowlist: NOTE_ALLOW below (each entry states why).
+ *                             docs/**\/*.md and packages/*\/README.md must resolve to a repository
+ *                             file with the exact letter case (GitHub is case-sensitive), never into
+ *                             node_modules or build output. Links in code, URLs with a scheme and
+ *                             same-page anchors are skipped; `--anchors` also checks #fragments.
+ *        no-internal-notes    development-process markers (INTERNAL_NOTES) in sources, scripts, docs
+ *                             and manifests; plain "lead" or "worker" are fine. Allowlist: NOTE_ALLOW.
  *
  * Usage: node scripts/lint.mjs [--rules-only | --tsc-only] [--anchors] [--json] [--root <dir>]
  * Exit code: 0 clean, 1 findings, 2 internal error.
@@ -78,8 +71,6 @@ const DOC_HOSTS = new Set([
   'json-schema.org',
 ]);
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
-
-// ---------------------------------------------------------------- helpers
 
 const posix = (p) => p.split(sep).join('/');
 
@@ -152,7 +143,6 @@ export function classify(src) {
       i++;
       continue;
     }
-    // code
     if (c === '/' && src[i + 1] === '/') {
       while (i < n && src[i] !== '\n') cls[i++] = 1;
       continue;
@@ -270,8 +260,6 @@ function hostOf(rest) {
   return authority.split(':')[0].toLowerCase();
 }
 
-// ---------------------------------------------------------------- repo rules
-
 function runRules() {
   const findings = [];
   const counts = {};
@@ -351,8 +339,6 @@ function runRules() {
   scanned += checkInternalNotes(add);
   return { scanned, findings, counts };
 }
-
-// ---------------------------------------------------------------- docs-links
 
 /** Markdown files whose relative links are published (repository front page, docs, extension README). */
 function markdownFiles() {
@@ -518,8 +504,6 @@ function checkDocLinks(add) {
   return files.length;
 }
 
-// ---------------------------------------------------------------- no-internal-notes
-
 /** Development-process markers that must not ship in sources, docs or manifests. */
 const INTERNAL_NOTES = [
   [/\bwork[- ]?streams?\s*#?\d/i, 'development workstream reference'],
@@ -600,8 +584,6 @@ function checkInternalNotes(add) {
   return files.length;
 }
 
-// ---------------------------------------------------------------- TypeScript
-
 function tscCommand() {
   const bin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
   if (existsSync(bin)) return { cmd: process.execPath, pre: [bin], shell: false };
@@ -627,8 +609,6 @@ function runTsc(pkg) {
     });
   });
 }
-
-// ---------------------------------------------------------------- main
 
 async function main() {
   const t0 = Date.now();

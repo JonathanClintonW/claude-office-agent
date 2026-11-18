@@ -1,10 +1,6 @@
 /**
- * Procedural background music: an endless, calm lo-fi loop written bar by bar from a seed.
- *
- * Pure and deterministic (no audio here; engine.ts plays the notes). Every 8 bars a new
- * "song" starts with another key and chord progression, so the music never loops exactly.
- * Day mood: keys, bass, a sparse melody and a soft beat. Night mood: slower, no kick or snare,
- * fewer melody notes. Everything is generated locally; there are no recordings or samples.
+ * Procedural lo-fi background music written bar by bar from a seed. Pure and deterministic
+ * (engine.ts plays the notes); every 8 bars a new key and progression start, so it never loops exactly.
  */
 
 export type Mood = 'day' | 'night';
@@ -128,7 +124,6 @@ export function composeBar(song: Song, bar: number): NoteEvent[] {
   return out;
 }
 
-/** Hz of a MIDI note. */
 export function midiHz(midi: number): number {
   return 440 * 2 ** ((midi - 69) / 12);
 }

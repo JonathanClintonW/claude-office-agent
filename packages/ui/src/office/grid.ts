@@ -31,7 +31,6 @@ export function walkable(layout: OfficeLayout): (p: Point) => boolean {
   };
 }
 
-/** The room containing a tile, if any. */
 export function roomAt(layout: Pick<OfficeLayout, 'rooms'>, p: Point): Room | undefined {
   return layout.rooms?.find((r) => roomContains(r, p));
 }
@@ -306,8 +305,7 @@ function departmentCentre(seats: readonly Seat[], department: string): Point | u
  *    other workspaces' zones),
  * 3. the free desk nearest to their parent (subagents/teammates),
  * 4. the first free desk.
- * Agents that do not fit get `null` (they stand in the lounge). Layouts without rooms behave
- * exactly as before.
+ * Agents that do not fit get `null` (they stand in the lounge).
  */
 export function assignDesks(prev: ReadonlyMap<string, string | null>, agents: readonly Assignable[], seats: readonly Seat[]): Map<string, string | null> {
   const byId = new Map(seats.map((s) => [s.deskId, s]));

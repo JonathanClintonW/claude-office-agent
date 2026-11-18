@@ -1,8 +1,6 @@
 /**
- * Data minimisation for hook payloads.
- *
- * The monitor never stores full tool inputs or tool responses. Instead it keeps a short,
- * secret-redacted summary that is good enough to answer "what is this agent doing?".
+ * Data minimisation for hook payloads: the monitor never stores full tool inputs or responses, only a
+ * short, secret-redacted summary that answers "what is this agent doing?".
  */
 
 const SECRET_RULES: Array<[RegExp, string]> = [
@@ -203,10 +201,9 @@ function trimDeep(v: unknown, depth: number): unknown {
 }
 
 /**
- * Applied by the hook forwarder before anything leaves the Claude Code process tree.
- * Drops payload fields we never use (prompts, tool responses, permission suggestions)
- * and bounds the size of the rest. The monitor normalises the result again, so this
- * only needs to be conservative, not complete.
+ * Applied by the hook forwarder before anything leaves the Claude Code process tree: drops fields we never
+ * use (prompts, tool responses, permission suggestions) and bounds the rest. The monitor normalises again,
+ * so this only needs to be conservative, not complete.
  */
 export function pretrimHookPayload(raw: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};

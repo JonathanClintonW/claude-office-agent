@@ -1,13 +1,8 @@
 /**
- * Office sound: procedural background music, sound effects and a quiet typing ambience, all
- * synthesized in the page with the Web Audio API. No audio files, no samples, nothing
- * downloaded, no network.
- *
- * - Nothing is created until sound is switched on. Browsers also only start audio after a
- *   click or key press, so the first one unlocks it (`unlock()`).
- * - Sound off: the AudioContext is suspended and the scheduler stops (no CPU).
- * - Page hidden: the music fades out (background timers are throttled), effects still play so
- *   a permission prompt can still be heard.
+ * Office sound synthesized in the page with the Web Audio API: no audio files, nothing downloaded,
+ * no network. Nothing is created until sound is on and a click or key press unlocks it (`unlock()`).
+ * Sound off suspends the context; a hidden page fades the music (timers are throttled) but still
+ * plays effects so a permission prompt can be heard.
  */
 import { MAX_PER_SECOND, MIN_GAP_MS, type SfxKind } from './cues';
 import { BARS_PER_SONG, composeBar, midiHz, songFor, STEPS_PER_BAR, type Mood, type NoteEvent, type Song } from './music';
@@ -151,8 +146,6 @@ export class SoundEngine implements SoundSink {
     this.musicBus = undefined;
   }
 
-  // ---------------------------------------------------------------- state
-
   private apply(): void {
     const ctx = this.ctx;
     if (!this.opts.on) {
@@ -214,8 +207,6 @@ export class SoundEngine implements SoundSink {
     }
   }
 
-  // ---------------------------------------------------------------- music
-
   private scheduleBar(t: number): void {
     if (!this.song || this.bar >= BARS_PER_SONG) {
       this.song = songFor(this.seed, this.section++, this.mood);
@@ -270,8 +261,6 @@ export class SoundEngine implements SoundSink {
     }
   }
 
-  // ---------------------------------------------------------------- effects
-
   private effect(kind: SfxKind, t: number, out: AudioNode): void {
     switch (kind) {
       case 'arrive': // ding-dong at the door
@@ -325,8 +314,6 @@ export class SoundEngine implements SoundSink {
     if (space) this.noiseHit(dest, t, 0.03, 0.05, 'bandpass', 900, { q: 1.5 });
     else this.noiseHit(dest, t, 0.018, 0.035 + this.rand() * 0.03, 'bandpass', 2_500 + this.rand() * 1_500, { q: 1.2 });
   }
-
-  // ---------------------------------------------------------------- building blocks
 
   /** One enveloped oscillator through a low-pass filter. */
   private tone(

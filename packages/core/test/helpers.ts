@@ -23,7 +23,7 @@ export function norm(raw: unknown, ts: number): MonitorEvent {
   return r.event;
 }
 
-/** Apply a sequence of [payload, ts] pairs, assigning sequence numbers like the monitor. */
+/** Reduces events into an office state, assigning sequence numbers like the monitor. */
 export class Harness {
   state: OfficeState = createInitialState();
   seq = 0;

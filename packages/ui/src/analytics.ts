@@ -87,8 +87,6 @@ export const METRIC_DEFINITIONS = {
 
 export type MetricId = keyof typeof METRIC_DEFINITIONS;
 
-// ---------------------------------------------------------------- formatting
-
 export function tokensOf(c: TokenCounts): number {
   return c.inputTokens + c.outputTokens + c.cacheCreationTokens + c.cacheReadTokens;
 }
@@ -111,8 +109,6 @@ export function percent(part: number, whole: number): string {
   if (!whole) return '—';
   return `${Math.round((part / whole) * 100)}%`;
 }
-
-// ---------------------------------------------------------------- durations
 
 export interface StatusDurations {
   working: number;
@@ -162,8 +158,6 @@ export function durationStats(values: readonly number[]): DurationStats {
   const medianMs = v.length % 2 ? v[mid]! : (v[mid - 1]! + v[mid]!) / 2;
   return { count: v.length, totalMs, meanMs: totalMs / v.length, medianMs, maxMs: v[v.length - 1]! };
 }
-
-// ---------------------------------------------------------------- session metrics
 
 export type TaskOutcome = 'completed' | 'open' | 'left_open';
 
@@ -450,14 +444,13 @@ export function computeSessionMetrics(events: readonly MonitorEvent[], opts: Met
   const sessionAgent = sessionId ? state.agents[sessionId] : undefined;
   const ended = sessionAgent ? TERMINAL_STATUSES.has(sessionAgent.status) : false;
 
-  // ---- tasks (final reducer state: the same semantics as the task board)
+  // Tasks: final reducer state, the same semantics as the task board.
   const taskList: TaskMetric[] = Object.values(state.tasks)
     .filter((t) => !sessionId || t.sessionId === sessionId)
     .map((t) => taskMetric(t))
     .sort((x, y) => (x.createdAt ?? x.completedAt ?? 0) - (y.createdAt ?? y.completedAt ?? 0));
   const taskDurations = taskList.map((t) => t.durationMs).filter((d): d is number => d !== undefined);
 
-  // ---- tools
   const byName = new Map<string, ToolNameStats>();
   const perAgent = new Map<string, { calls: number; errors: number }>();
   let succeeded = 0;
@@ -504,7 +497,6 @@ export function computeSessionMetrics(events: readonly MonitorEvent[], opts: Met
   const calls = tools.size;
   const resolved = calls - unresolved;
 
-  // ---- agents
   const nameOf = (key: string) => {
     const a = state.agents[key];
     return a ? displayName(a) : key;
@@ -524,7 +516,6 @@ export function computeSessionMetrics(events: readonly MonitorEvent[], opts: Met
   for (const a of byAgent) for (const k of Object.keys(allAgents) as StatusBucket[]) allAgents[k] += a.durations[k];
   const main = (sessionId && dur.get(agentKeyFor(sessionId))) || emptyDurations();
 
-  // ---- activity
   const nBuckets = Math.max(1, Math.min(200, Math.floor(opts.buckets ?? 24)));
   const span = Math.max(0, end - start);
   const bucketMs = Math.max(1000, Math.ceil(span / nBuckets) || 1000);
@@ -607,8 +598,6 @@ function taskMetric(t: Task): TaskMetric {
   return m;
 }
 
-// ---------------------------------------------------------------- summaries (fixed templates)
-
 export interface SummaryInput {
   tasksCompleted: number;
   tasksLeftOpen: number;
@@ -648,8 +637,6 @@ export function summarize(m: SummaryInput): string {
   }
   return text;
 }
-
-// ---------------------------------------------------------------- live state metrics
 
 export interface StateMetrics {
   sessions: { total: number; live: number; ended: number };

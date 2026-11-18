@@ -75,7 +75,7 @@ export interface TreeNode {
   children: TreeNode[];
 }
 
-/** Sessions (newest activity first) with their nested subagents and teammates. */
+/** Root agents with their nested subagents and teammates; every agent appears exactly once. */
 export function agentTree(state: OfficeState, filter?: (a: Agent) => boolean): TreeNode[] {
   const all = Object.values(state.agents).filter((a) => !filter || filter(a));
   const byParent = new Map<string, Agent[]>();

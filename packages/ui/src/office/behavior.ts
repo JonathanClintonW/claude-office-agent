@@ -130,9 +130,7 @@ export type Directive =
 export interface TeamEvent {
   id: string;
   kind: 'delegate' | 'handoff' | 'complete';
-  /** Agent key the event starts at. */
   from: string;
-  /** Agent key the event goes to. */
   to: string;
   /** Time of the evidence (ms). */
   at: number;

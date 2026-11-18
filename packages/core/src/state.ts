@@ -275,16 +275,13 @@ class Ctx {
     readonly ev: MonitorEvent,
     readonly o: ReducerOptions,
   ) {
-    // Copy-on-write: most events touch one or two agents, so the agent table is only
-    // copied on the first write instead of on every event (O(agents) per event).
+    // Copy-on-write: most events touch one or two agents, so tables are copied on first write, not per event.
     this.agents = state.agents;
     this.tasks = state.tasks;
     this.notices = state.notices;
     this.log = state.log;
     this.spawns = state.spawns;
   }
-
-  // ---------- agents ----------
 
   get(key: string): Agent | undefined {
     return this.agents[key];
@@ -472,7 +469,7 @@ class Ctx {
     return true;
   }
 
-  // ---------- tools ----------
+  // Tools
 
   findTool(a: Agent, ref: ToolRef, preferStatus?: ToolStatus[]): ToolCall | undefined {
     if (ref.useId) {
@@ -596,8 +593,6 @@ class Ctx {
     a.currentToolId = undefined;
   }
 
-  // ---------- lifecycle helpers ----------
-
   end(a: Agent, reason: string, status: 'ended' | 'completed' = 'ended', force = false): boolean {
     if (!this.setStatus(a, status, reason, this.ev.ts, force)) return false;
     a.endedAt = this.ev.ts;
@@ -635,8 +630,6 @@ class Ctx {
     a.pendingPermission = undefined;
   }
 
-  // ---------- tasks ----------
-
   editTask(key: string): Task {
     if (!this.tasksCopied) {
       this.tasks = { ...this.tasks };
@@ -666,7 +659,7 @@ class Ctx {
     }
   }
 
-  // ---------- spawning calls (Agent/Task) ----------
+  // Spawning calls (Agent/Task)
 
   /** Pending spawns of a session, without those that can no longer match anything at `at`. */
   liveSpawns(sessionId: string, at: number): PendingSpawn[] {
@@ -731,7 +724,7 @@ class Ctx {
     if (list?.some((p) => p.toolUseId === toolUseId)) this.setSpawns(sessionId, list.filter((p) => p.toolUseId !== toolUseId));
   }
 
-  // ---------- output ----------
+  // Output
 
   addLog(agentKey: string, text: string): void {
     const ev = this.ev;
@@ -1275,8 +1268,7 @@ function onRegistryStatus(c: Ctx, ev: EventOf<'RegistryStatus'>): void {
   const reg = ev.status;
   // Restored or transcript-discovered sessions accept the registry's current view.
   const force = s.status === 'unknown' && s.statusSource !== 'hook';
-  // A running process with a newer registry status is real evidence; however "busy"
-  // is coarser than hook data (a busy session may be waiting on a permission prompt),
+  // "busy" is coarser than hook data (a busy session may be waiting on a permission prompt),
   // so it only replaces statuses it is inconsistent with.
   if (reg === 'busy') {
     if (!['working', 'waiting_permission', 'waiting_input'].includes(s.status)) c.setStatus(s, 'working', 'Busy (session registry)', ev.ts, force);

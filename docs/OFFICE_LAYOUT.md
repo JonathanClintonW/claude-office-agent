@@ -89,7 +89,11 @@ every desk chair, room and furniture item is reachable from the door with A*.
 ## Departments (`packages/ui/src/departments.ts`)
 
 `departmentFor(agent, settings.departmentRules)` returns the department of the first rule whose
-pattern is a case-insensitive substring of the rule's field. Fields are real, observed values:
+pattern matches the rule's field at the start of a word, ignoring case (`test` matches `test-runner`,
+`Testing` and `CodeTester`, but not `latest`). The default rules put specific departments first:
+Security (`security`), DevOps (`devops`, `deploy`), QA (`test`, `review`), then Research (`explore`,
+`plan`), so `security-reviewer` sits in Security and `deployment-planner` in DevOps. A saved, unchanged
+copy of the earlier default list (broad rules first) is upgraded automatically. Fields are real, observed values:
 `agentType` (subagent type), `cwd` (`/` and `\` match alike) or `name` (display name). Unmatched
 agents go to **development**. Edit the rules under **Settings → Departments** (add, edit, reorder,
 remove, reset, and a "try it" box). This is a local seating heuristic, and the UI says so.

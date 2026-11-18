@@ -1,26 +1,8 @@
 /**
  * Subagent lifecycle through the REAL monitor: createMonitor with defaultPlugins(), hook payloads
- * POSTed over HTTP on a random port, WebSocket mirrors (MirrorClient, and the UI's own OfficeStore
- * over its WebSocketTransport), then the UI's pure view functions (toWorkerViews, departmentFor,
- * assignDesks) and the history/replay path on the mirrored state.
- *
- * Covered, in one ordered stream:
- *  - a spawn linked to its Agent tool call (parentVia spawn-tool, spawnToolUseId);
- *  - three parallel subagents of the same type, matched to their spawn calls in order;
- *  - a nested subagent spawned by a subagent;
- *  - agent-team teammates: TaskCreated/TaskCompleted with teammate_name, TeammateIdle with and
- *    without agent_id;
- *  - two sessions in different projects that reuse the same agent_id (keys stay per session);
- *  - duplicate delivery: an identical envelope POSTed twice and a spooled copy of a delivered event
- *    are dropped by the deduper and counted in meta.duplicatesDropped;
- *  - SessionEnd while children are still running (children end, open tasks are orphaned);
- *  - a mirror that disconnects and one that joins mid-stream converge to the monitor's state;
- *  - a monitor restart on the same port and home: the UI transport reconnects on its own and the
- *    store converges again; history survives the restart;
- *  - stop() clears every interval and timeout the monitor and its plugins created.
- *
- * Meeting participation, capacity and interruption are unit-tested in
- * packages/ui/test/meetings.test.ts and are not repeated here.
+ * POSTed over HTTP, WebSocket mirrors (MirrorClient and the UI's own OfficeStore over its
+ * WebSocketTransport), then the UI's pure view functions and the history/replay path on the
+ * mirrored state. Meetings are unit-tested in packages/ui/test/meetings.test.ts instead.
  *
  * The UI modules are imported at runtime (non-literal specifiers) so the monitor's Node-only
  * TypeScript program does not pull in DOM-typed UI sources; the shapes used are declared below.
@@ -34,8 +16,6 @@ import { defaultPlugins } from '../src/plugins';
 import { createMonitor, type Monitor } from '../src/server';
 import { appendToSpool } from '../src/spool';
 import { freePort, http, MirrorClient, sleep, tempDir } from './helpers';
-
-// ---------------------------------------------------------------- UI shapes (runtime imports)
 
 interface UiWorkerView {
   key: string;
@@ -106,8 +86,6 @@ async function loadUi(): Promise<UiModules> {
   } as UiModules;
 }
 
-// ---------------------------------------------------------------- timer tracking (monitor sources only)
-
 type Handle = ReturnType<typeof setTimeout>;
 interface Tracked {
   kind: 'interval' | 'timeout';
@@ -163,8 +141,6 @@ function restoreTimers(): void {
 
 const liveTimers = () => [...tracked.values()].filter((t) => !t.done).map((t) => `${t.kind} from ${t.where}`);
 
-// ---------------------------------------------------------------- traffic
-
 const SHOP = 'c:\\work\\shop';
 const API = 'c:\\work\\api-server';
 const S1 = 'life-shop-0001';
@@ -206,8 +182,6 @@ async function until(pred: () => boolean, timeoutMs: number, what: string): Prom
 
 /** Fields of an agent that must agree between the monitor, a mirror and a replay. */
 const shape = (a: Agent | undefined) => (a ? { key: a.key, kind: a.kind, parentKey: a.parentKey, parentVia: a.parentVia, status: a.status, agentType: a.agentType, teammateName: a.teammateName, sessionId: a.sessionId } : undefined);
-
-// ---------------------------------------------------------------- test
 
 const sandbox = tempDir('life-sandbox');
 const ENV_KEYS = ['HOME', 'USERPROFILE', 'CLAUDE_CONFIG_DIR', 'AGENT_OFFICE_HOME'] as const;

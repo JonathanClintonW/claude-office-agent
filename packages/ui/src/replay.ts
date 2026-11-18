@@ -4,13 +4,10 @@ import type { WorkerView } from './office/scene';
 import { toWorkerViews } from './view';
 
 /**
- * Replay re-applies a session's journaled events, in the monitor's original apply order, through
- * the same reducer as the live office. Statuses, tools and tasks are therefore exactly what the
- * office showed at the time; only movement and animation are reconstructed by the scene.
- *
- * Event timestamps are not strictly monotone (async hooks, spool replays), so the replay clock
- * of event i is the running maximum of the timestamps up to i. "State at time t" is the state
- * after every event whose replay clock is <= t.
+ * Replay re-applies a session's journaled events, in the monitor's apply order, through the live
+ * reducer, so statuses, tools and tasks are exactly what the office showed; only movement and
+ * animation are reconstructed. Timestamps are not monotone (async hooks, spool replays), so an
+ * event's replay clock is the running max of the timestamps up to it.
  */
 
 export const REPLAY_SPEEDS = [1, 2, 4, 8, 16] as const;
@@ -92,8 +89,6 @@ export function stateAtTime(tl: ReplayTimeline, t: number): OfficeState {
   return stateAtIndex(tl, indexAtTime(tl, t));
 }
 
-// ---------------------------------------------------------------- player model
-
 export interface PlayerState {
   playing: boolean;
   speed: ReplaySpeed;
@@ -170,8 +165,6 @@ export function advance(tl: ReplayTimeline, p: PlayerState, realMs: number, opts
   return { ...p, position };
 }
 
-// ---------------------------------------------------------------- loading
-
 export interface LoadedSessionEvents {
   events: MonitorEvent[];
   /** Matching events reported by the monitor. */
@@ -204,8 +197,6 @@ export async function fetchSessionEvents(
   }
   return { events, total, truncated: capped || events.length < total };
 }
-
-// ---------------------------------------------------------------- presentation helpers
 
 export interface TimelineEvent {
   index: number;

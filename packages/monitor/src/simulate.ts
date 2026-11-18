@@ -10,7 +10,6 @@ export interface ScriptStep {
   payload: Record<string, unknown>;
 }
 
-
 function base(session: string, cwd: string) {
   return (event: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
     session_id: session,
@@ -99,19 +98,14 @@ export function endScenario(runId = '0001'): Record<string, unknown>[] {
   return simSessions(runId).map((s) => ({ session_id: s, hook_event_name: 'SessionEnd', reason: 'other', cwd: 'C:\\demo' }));
 }
 
-// ---------------------------------------------------------------- showcase scenario
-
-/** Session ids of the showcase scenario (all `sim-` prefixed, unique per run). */
 export function showcaseSessions(runId: string): [string, string, string, string, string] {
   return [`sim-webshop-${runId}`, `sim-api-${runId}`, `sim-infra-${runId}`, `sim-audit-${runId}`, `sim-docs-${runId}`];
 }
 
 /**
- * A busier demo for screenshots and presentations: five sessions over about 70 seconds with
- * parallel subagents in several departments, one nested subagent, an agent team with task
- * handoffs, a permission prompt, a question, a failed and re-run test, a failed command and a
- * failed turn. Every session id starts with `sim-`, so the UI labels all of it SIMULATED. Only
- * hook fields the reducer understands are used; no prompt text is sent.
+ * A busier demo for screenshots: five sessions over about 70 seconds with parallel and nested
+ * subagents, an agent team, a permission prompt, a question and several failures.
+ * Only hook fields the reducer understands are used; no prompt text is sent.
  */
 export function buildShowcaseScenario(runId = '0001'): ScriptStep[] {
   const [W, A, I, S, R] = showcaseSessions(runId);

@@ -3,7 +3,6 @@ import type { Actor, Directive, Point, RoomInfo, Spot, World } from '../src/offi
 import { isTemplateLine } from '../src/office/dialogue';
 import { DEFAULT_MEETING_OPTIONS, MeetingScheduler, roomSeats, type MeetingInfo, type MeetingOptions } from '../src/office/meetings';
 
-/** Deterministic RNG. */
 function seeded(seed = 42): () => number {
   let s = seed;
   return () => {
@@ -525,8 +524,6 @@ describe('MeetingScheduler: duplicates, cleanup, frequency, determinism', () => 
     expect(trace(31)).not.toEqual(trace(32));
   });
 });
-
-// ------------------------------------------------------------------ social gatherings
 
 const k = (p: Point) => `${p.x},${p.y}`;
 

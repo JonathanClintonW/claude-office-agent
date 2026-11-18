@@ -1,4 +1,3 @@
-// Read-only git plugin (pure parsers + routes driven through createMonitor().rpc()).
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -173,7 +172,6 @@ describe.skipIf(!GIT)('git plugin routes (temporary repository)', () => {
     // Local upstream (no remote, no network): main is one commit ahead of `base`.
     git(repo, 'branch', 'base', 'HEAD~1');
     git(repo, 'branch', '-q', '--set-upstream-to=base');
-    // Working tree changes.
     writeFileSync(join(repo, 'src', 'a.ts'), 'export const a = 1;\nexport const c = 3;\nexport const d = 4;\n');
     git(repo, 'mv', 'old.txt', 'renamed.txt');
     writeFileSync(join(repo, 'staged.ts'), 'x\n');

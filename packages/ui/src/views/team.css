@@ -36,7 +36,6 @@
   border-top-color: var(--accent);
 }
 
-/* ---------------------------------------------------------------- tags */
 .team-tag {
   display: inline-block;
   font-family: var(--title);
@@ -78,7 +77,6 @@
   text-transform: uppercase;
 }
 
-/* ---------------------------------------------------------------- team cards */
 .team-list {
   display: flex;
   flex-direction: column;
@@ -251,7 +249,6 @@
   margin: 8px 0 0;
 }
 
-/* ---------------------------------------------------------------- feed */
 .team-feed-list {
   list-style: none;
   margin: 0;
@@ -289,7 +286,6 @@
   color: var(--muted);
 }
 
-/* ---------------------------------------------------------------- simulation */
 .team-sim {
   margin-top: 12px;
   padding: 2px 10px 8px;

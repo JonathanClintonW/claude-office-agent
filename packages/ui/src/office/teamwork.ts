@@ -1,26 +1,22 @@
 /**
  * Short office animations of verified collaboration events (TeamEvent, from collab.ts
  * collabVisuals). Nothing here is simulated or inferred: an interaction starts only for a
- * delegation or task handoff that Claude Code actually reported, and it only shows that the
- * event happened. It is not a message: no speech, only a pose and an optional icon bubble.
+ * delegation or task handoff that Claude Code actually reported. It is not a message: no
+ * speech, only a pose and an optional icon bubble.
  *
  * - Briefing ('delegate'): the newly spawned subagent stops on a free tile next to its
- *   parent's desk on its way in, faces the parent and talks for at most `briefingMs`, then
- *   walks on to its own desk. The parent never leaves its desk. Skipped when the detour is
- *   long, when either agent is not in the office or when no tile next to the desk is free.
- *   Several children spawned in parallel get distinct tiles.
+ *   parent's desk on its way in, talks for at most `briefingMs`, then walks on to its own desk.
+ *   Skipped when the detour is long, an agent is not in the office or no tile is free.
  * - Handoff ('handoff'): only when the task creator and the completer are both idle, the
- *   completer walks to a tile next to the creator's desk, talks for `handoffMs` and walks
- *   back. Otherwise nothing happens here (the scene's task-card flight still shows it).
+ *   completer walks to the creator's desk, talks for `handoffMs` and walks back.
  *
- * Real status always wins. A briefing holds a working subagent for a few seconds only and
- * ends at once on a permission prompt, a question, a failure or an unknown status; a handoff
- * ends as soon as either agent stops being idle. Everything is released at the latest
- * `maxHoldMs` after the event was received. Local and deterministic (injected RNG, `now`
- * passed in): no model, no network, no tokens.
+ * Real status always wins: a briefing ends at once on a permission prompt, a question, a
+ * failure or an unknown status; a handoff ends as soon as either agent stops being idle; all
+ * are released at the latest `maxHoldMs` after the event. Local and deterministic: no model,
+ * no network.
  *
  * Register it before the meeting scheduler and idle life, so they see the actors it holds as
- * not idle and drop their own plans for them.
+ * not idle.
  */
 import type { AgentStatus } from '@agent-office/core';
 import type { Actor, BehaviorProvider, ChatIcon, Directive, Face, Point, TeamEvent, World } from './behavior';
@@ -57,7 +53,6 @@ export const DEFAULT_TEAMWORK_OPTIONS: TeamworkOptions = {
 
 /** Read-only view of an interaction (diagnostics and tests). Always caused by a verified event. */
 export interface TeamworkInfo {
-  /** Id of the TeamEvent that caused it. */
   eventId: string;
   kind: TeamworkKind;
   /** Agent that walks: the new subagent (briefing) or the task completer (handoff). */
@@ -192,8 +187,6 @@ export class TeamworkProvider implements BehaviorProvider {
     }
     return out;
   }
-
-  // ---------------------------------------------------------------- internals
 
   private walkable(p: Point): boolean {
     return this.world.isWalkable ? this.world.isWalkable(p) : true;

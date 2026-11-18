@@ -1,9 +1,6 @@
 /**
- * Path helpers that behave identically on Windows and POSIX hosts.
- *
- * Claude Code on Windows reports paths such as `c:\work\app` while Git Bash
- * style paths (`/c/work/app`) and mixed separators also appear. We never touch
- * the filesystem here: these helpers only compare and display strings.
+ * Path helpers that behave identically on Windows and POSIX hosts: paths arrive as `c:\work\app`,
+ * Git Bash `/c/work/app` or with mixed separators. They only compare strings, never touch the filesystem.
  */
 
 const WIN_DRIVE = /^[a-zA-Z]:([\\/]|$)/;

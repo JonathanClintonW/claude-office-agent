@@ -1,4 +1,3 @@
-// Replay equivalence, seeking, the player model and the History view (canvas mocked).
 import { createElement } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -220,8 +219,6 @@ describe('fetchSessionEvents', () => {
     expect(r.truncated).toBe(true);
   });
 });
-
-// ---------------------------------------------------------------- HistoryView (non-canvas parts)
 
 const host: HostInfo = { kind: 'browser', workspaceFolders: [], canOpenFiles: false, canFocusClaude: false };
 

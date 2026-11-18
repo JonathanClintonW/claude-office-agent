@@ -1,4 +1,3 @@
-// Contract tests for the monitor plugin + RPC mechanism.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { MonitorEvent } from '@agent-office/core';
 import { loadOrCreateConfig } from '../src/config';

@@ -1,8 +1,8 @@
 /**
  * Layout → behavior world: interactive spots, chat tiles, rooms, lounge seats, room doorways
- * and reception counters. Pure: no rendering, no randomness. Only tiles reachable on foot from the door are
- * used. Tiles that one provider walks workers to never double as another provider's tiles:
- * spots and chat tiles stay off meeting seats and presenter spots.
+ * and reception counters. Pure: no rendering, no randomness. Only tiles reachable on foot from
+ * the door are used. Spots and chat tiles stay off meeting seats and presenter spots, so one
+ * provider's destination tiles never double as another's.
  */
 import { blockedTiles, reachableTiles, roomContains, seatOf, WALL_ROWS, type FurnitureItem, type FurnitureType, type OfficeLayout, type RoomKind } from '@agent-office/core';
 import type { Face, Point, RoomInfo, Seat, Spot, SpotKind, World } from './behavior';
@@ -61,7 +61,6 @@ export interface Counter {
   roomId?: string;
 }
 
-/** The behavior world plus the extras this module derives (lounge seats, doorways, reception counters). */
 export interface OfficeWorld extends World {
   lounges: LoungeSeat[];
   doorways: Doorway[];
@@ -79,7 +78,6 @@ export function chairFacing(layout: Pick<OfficeLayout, 'items'>, chair: Point): 
   return 'down';
 }
 
-/** Interactive spots, chat tiles, rooms, lounge seats and doorways for a layout. */
 export function buildWorld(layout: OfficeLayout, windowXs: readonly number[], night: boolean): OfficeWorld {
   const blocked = blockedTiles(layout);
   const reach = reachableTiles(layout);

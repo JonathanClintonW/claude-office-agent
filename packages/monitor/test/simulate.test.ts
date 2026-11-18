@@ -58,7 +58,6 @@ describe('simulated demo scenarios', () => {
     for (const a of subagents) if (a.parentKey) children.set(a.parentKey, (children.get(a.parentKey) ?? 0) + 1);
     expect([...children.values()].some((n) => n >= 2)).toBe(true);
     expect(agents.some((a) => a.kind === 'teammate')).toBe(true);
-    // the end events close every session
     for (const s of sessions) expect(s.status).toBe('ended');
   });
 });

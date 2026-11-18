@@ -1,6 +1,5 @@
 /* Inspector additions, task board details, Errors and Git views. */
 
-/* ---------------------------------------------------------------- shared bits */
 .dash-heur {
   display: inline-block;
   font-family: var(--title);
@@ -59,7 +58,7 @@
   text-shadow: 2px 2px 0 var(--edge);
 }
 
-/* ---------------------------------------------------------------- inspector */
+/* Inspector */
 .dash-readonly {
   margin: 14px 0 0;
   padding: 6px 8px;
@@ -89,7 +88,7 @@
   margin-bottom: 6px;
 }
 
-/* ---------------------------------------------------------------- task board */
+/* Task board */
 .dash-task-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -117,7 +116,7 @@
   color: #6e5c00;
 }
 
-/* ---------------------------------------------------------------- errors view */
+/* Errors view */
 .dash-summary {
   display: flex;
   gap: 8px;
@@ -222,7 +221,7 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------------------------------------------------------------- git view */
+/* Git view */
 .dash-repos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));

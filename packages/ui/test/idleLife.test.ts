@@ -7,7 +7,6 @@ import type { OfficeWorld } from '../src/office/world';
 
 type LifeWorld = World & Partial<Pick<OfficeWorld, 'lounges' | 'doorways'>>;
 
-/** Deterministic RNG. */
 function seeded(seed = 42): () => number {
   let s = seed;
   return () => {
@@ -187,8 +186,6 @@ describe('IdleDirector', () => {
     expect(d.activityOf('a')).toBeUndefined();
   });
 });
-
-// ------------------------------------------------------------------ new activities, variety, speech
 
 const spot = (id: string, kind: SpotKind, x: number, y: number, face: Spot['face'] = 'up'): Spot => ({ id, kind, at: { x, y }, face });
 const ctx = (over: Partial<ActorContext> = {}): ActorContext => ({ kind: 'session', sessionId: 's', status: 'idle', ...over });
@@ -575,11 +572,9 @@ describe('IdleDirector priorities', () => {
   });
 });
 
-// Keep DirectorOptions usable as a plain object (no required new fields).
+// Type check: DirectorOptions must not gain required fields.
 const _legacyOptions: DirectorOptions = { firstDelay: [1, 2], cooldown: [3, 4], maxAwayShare: 0.5 };
 void _legacyOptions;
-
-// ------------------------------------------------------------------ strolls, lounges, rooms, real events
 
 const room = (id: string, kind: RoomInfo['kind'], x: number, y: number, w: number, h: number): RoomInfo => ({ id, name: id, kind, x, y, w, h, seats: [], capacity: 0 });
 

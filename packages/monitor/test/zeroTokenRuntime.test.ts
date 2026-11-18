@@ -1,16 +1,11 @@
 /**
- * End-to-end RUNTIME check of the zero-extra-inference rule, in-process.
- *
- * The monitor runs with defaultPlugins() (discovery off, then on against a temp Claude dir),
- * ingests a long simulated session plus a burst of a few thousand events over HTTP, serves
- * reconnecting WebSocket clients and every plugin RPC route, and ticks several times, then
- * shuts down. Meanwhile child_process, http/https, net/tls, global fetch and global WebSocket
- * are spied in this process. Afterwards: no Claude executable was launched, every launched
- * process is git (read-only status queries), every connection went to loopback, and after
- * stop() the monitor makes no call at all, its guard is released with the counters at 0.
- *
- * The static scan (staticNoInference.test.ts) and the guard unit tests (inference.test.ts) are
- * complementary; this file does not repeat them.
+ * End-to-end RUNTIME check of the zero-extra-inference rule, in-process. The monitor runs with
+ * defaultPlugins() (discovery off, then on against a temp Claude dir) through a long simulation, an
+ * HTTP burst, reconnecting clients, every plugin RPC route and several ticks, while child_process,
+ * http/https, net/tls, fetch and WebSocket are spied. Proves: no Claude executable was launched, every
+ * process is git, every connection went to loopback, and after stop() the monitor makes no call at
+ * all and its guard is released with the counters at 0. Complements staticNoInference.test.ts and
+ * inference.test.ts without repeating them.
  *
  * The spies are installed BEFORE the monitor modules are imported (dynamic imports in beforeAll),
  * so module-level captures such as `promisify(execFile)` go through them as well.
@@ -28,8 +23,6 @@ import type * as PluginsModule from '../src/plugins';
 import type * as ServerModule from '../src/server';
 import type * as SimulateModule from '../src/simulate';
 import { freePort, http, tempDir } from './helpers';
-
-// ---------------------------------------------------------------- spies
 
 interface Call {
   api: string;
@@ -165,8 +158,6 @@ function restoreSpies(): void {
   syncBuiltinESMExports();
 }
 
-// ---------------------------------------------------------------- helpers
-
 /** WebSocket client with the UI store's semantics (skip duplicates, resync on a gap) plus RPC. */
 class Mirror {
   ws: WebSocket;
@@ -269,8 +260,6 @@ function seedClaudeDir(dir: string): void {
   writeFileSync(join(proj, sid, 'subagents', 'agent-zt1.meta.json'), JSON.stringify({ agentType: 'Explore', description: 'Look around', finished: false }));
   writeFileSync(join(proj, sid, 'subagents', 'agent-zt1.jsonl'), '{}\n');
 }
-
-// ---------------------------------------------------------------- test
 
 let mods: { config: typeof ConfigModule; plugins: typeof PluginsModule; server: typeof ServerModule; simulate: typeof SimulateModule };
 let guardDiagnostics: (() => InferenceDiagnostics) | undefined;

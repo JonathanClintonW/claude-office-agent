@@ -1,4 +1,3 @@
-// Rule-based error detection (pure).
 import { describe, expect, it } from 'vitest';
 import { agentKeyFor, createInitialState, normalizeHookPayload, normalizePathKey, reduce, systemEvent, type MonitorEvent, type OfficeState } from '@agent-office/core';
 import { DEFAULT_ISSUE_FILTER, detectIssues, filterIssues, looksLikeTestRun, recentToolProblems, type Issue } from '../src/errors';

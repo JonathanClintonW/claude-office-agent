@@ -208,7 +208,7 @@ describe('MiniMap', () => {
   });
 });
 
-// ---------------------------------------------------------------- OfficeView (scene mocked: no WebGL in jsdom)
+// OfficeView with the scene mocked: no WebGL in jsdom.
 
 const sceneMock = vi.hoisted(() => ({
   calls: [] as Array<[string, unknown[]]>,

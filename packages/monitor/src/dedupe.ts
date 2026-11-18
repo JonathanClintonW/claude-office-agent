@@ -1,22 +1,9 @@
 /**
- * Duplicate hook-event filter. Pure: no I/O, no timers, no globals.
- *
- * When Agent Office hooks are installed in two scopes (user settings and a project's
- * `.claude/settings.local.json`), Claude Code runs both handlers and every event arrives twice.
- * A forwarder whose POST timed out after the monitor had already accepted it also spools a
- * second copy. Both copies carry the same payload and (almost) the same capture time.
- *
- * An event is a duplicate only when an earlier event had the same fingerprint AND a capture
- * time within `windowMs`. The fingerprint covers session, agent, hook event, tool_use_id, tool
- * name, notification type, task id and a hash of the whole remaining payload, so events that
- * differ in any field (two tool uses without ids but different inputs) are never merged, and an
- * identical event repeated outside the window (a Notification minutes later) is kept.
- *
- * Limitation (inherent): two byte-identical payloads captured within `windowMs` cannot be told
- * apart from a duplicated delivery and are treated as one.
- *
- * Use one input form consistently: raw payloads (preferred, the most precise) or normalized
- * events. Only fingerprints and timestamps are retained, never payload content.
+ * Duplicate hook-event filter (pure: no I/O, timers or globals). Copies arise when hooks are installed in
+ * two scopes (Claude Code runs both) or when a forwarder spools an event whose timed-out POST was accepted.
+ * A duplicate needs the same fingerprint (identity fields plus a hash of the whole payload) and a capture
+ * time within `windowMs`, so byte-identical events inside the window are inherently merged.
+ * Only fingerprints and timestamps are retained, never payload content.
  */
 import type { MonitorEvent } from '@agent-office/core';
 
@@ -34,7 +21,8 @@ export interface Deduper {
    * True when `input` repeats an event seen within the window; false records it as seen.
    * Accepts a raw hook payload, a forwarder envelope `{ v: 1, ts, payload }` or a normalized
    * MonitorEvent. `receivedAt` is the arrival time, used when the input has no capture time.
-   * Inputs that are not hook events are never duplicates.
+   * Inputs that are not hook events are never duplicates. Use one input form consistently:
+   * raw payloads (preferred, the most precise) or normalized events.
    */
   isDuplicate(input: unknown, receivedAt: number): boolean;
   readonly size: number;
@@ -82,7 +70,6 @@ function isMonitorEvent(v: Obj): boolean {
   return typeof v.kind === 'string' && typeof v.seq === 'number' && typeof v.source === 'string';
 }
 
-/** Fingerprint of a hook event, or undefined when the input is not a hook event. */
 export function hookFingerprint(input: unknown): HookFingerprint | undefined {
   if (!isObj(input)) return undefined;
   if (isMonitorEvent(input)) {
