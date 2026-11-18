@@ -1,25 +1,17 @@
 /**
- * Runtime zero-inference guard for the monitor process.
- *
- * Wraps the process-wide outbound primitives (node:http / node:https request+get, global
- * fetch, global WebSocket, node:child_process spawn/exec/execFile/fork and their Sync
- * variants) to count and classify everything the office runtime starts:
- *
- * - Requests to Claude/Anthropic inference hosts and launches of a Claude executable are
- *   BLOCKED: the call throws (or the fetch promise rejects) before any DNS lookup, socket
- *   or process exists, and the attempt is counted as office-generated inference.
+ * Runtime zero-inference guard for the monitor process. Wraps node:http/https request+get, global
+ * fetch and WebSocket, and the node:child_process launchers to count and classify everything the office starts:
+ * - Claude/Anthropic inference hosts and Claude executables are BLOCKED: the call throws (or fetch
+ *   rejects) before any DNS lookup, socket or process exists, and is counted as office inference.
  * - Any other non-loopback request is counted as external (expected: 0).
- * - Loopback requests, read-only `git` and the OS browser opener used by `cli.ts --open`
- *   (with a loopback URL) are allowed and counted.
+ * - Loopback requests, read-only `git` and the OS browser opener with a loopback URL are allowed and counted.
  *
- * The guard only touches the process it is installed in. The user's own Claude Code
- * sessions are separate processes and are never affected. Inside the VS Code extension
- * host (`process.versions.electron`) the process is shared with other extensions, so the
- * guard refuses to patch anything there and reports itself inactive; the static test
- * (ZERO_INFERENCE_STATIC_TEST) covers that host instead.
+ * Only this process is affected, never the user's Claude Code sessions. The VS Code extension host
+ * (`process.versions.electron`) is shared with other extensions, so the guard refuses to patch there and
+ * reports itself inactive; ZERO_INFERENCE_STATIC_TEST covers that host instead.
  *
- * Wrappers check `active` on every call, so a wrapper left behind after uninstall (because
- * another library wrapped the same function later) is a transparent pass-through.
+ * Wrappers check `active` on every call, so one left behind after uninstall (because another library
+ * wrapped the same function later) is a transparent pass-through.
  */
 import { syncBuiltinESMExports } from 'node:module';
 import { ZERO_INFERENCE_STATIC_TEST, type InferenceDiagnostics } from '@agent-office/core';
@@ -68,8 +60,6 @@ export class InferenceBlockedError extends Error {
     this.name = 'InferenceBlockedError';
   }
 }
-
-// ---------------------------------------------------------------- host classification
 
 interface HostPattern {
   re: RegExp;
@@ -141,8 +131,6 @@ export function classifyHost(host: string, port?: number, patterns: readonly Hos
 
 const defaultPatterns = compileHostPatterns(DEFAULT_INFERENCE_HOSTS);
 
-// ---------------------------------------------------------------- process classification
-
 export type LaunchClass = 'claude' | 'git' | 'browser' | 'other';
 
 const EXE_EXT = /\.(exe|cmd|bat|com|ps1)$/;
@@ -196,8 +184,6 @@ export function classifyLaunch(file: string, args: readonly string[] = [], shell
   if (LAUNCHERS.has(exe) && args.some((a) => isClaudeToken(a) || shellTokens(a).some(isClaudeToken))) return 'claude';
   return 'other';
 }
-
-// ---------------------------------------------------------------- state
 
 type AnyFn = (...args: unknown[]) => unknown;
 type Mod = Record<string, unknown>;
@@ -256,8 +242,6 @@ function block(kind: string, target: string): never {
   safeLog(`inference guard BLOCKED ${kind} (${target})`);
   throw new InferenceBlockedError(kind, target);
 }
-
-// ---------------------------------------------------------------- network checks
 
 interface Target {
   protocol: string;
@@ -349,8 +333,6 @@ function urlTarget(input: unknown): Target | undefined {
   return { protocol: u.protocol, host: normalizeHost(u.hostname), port: portOf(u.port) ?? (secure ? 443 : 80) };
 }
 
-// ---------------------------------------------------------------- process checks
-
 interface Launch {
   file: string;
   args: string[];
@@ -378,8 +360,6 @@ function checkLaunch(fn: string, args: unknown[]): void {
   c.launches[cls] += 1;
   if (cls === 'other') safeLog(`inference guard: process launch ${fn} (${exe})`);
 }
-
-// ---------------------------------------------------------------- patching
 
 function builtin(id: string): Mod | undefined {
   const get = (process as unknown as { getBuiltinModule?: (id: string) => unknown }).getBuiltinModule;
@@ -504,8 +484,6 @@ function deactivate(): void {
   inactiveReason = NOT_INSTALLED_REASON;
 }
 
-// ---------------------------------------------------------------- public API
-
 /** Install the guard in this process (idempotent). Returns the resulting diagnostics. */
 export function installInferenceGuard(opts: InferenceGuardOptions = {}): InferenceDiagnostics {
   manual = true;
@@ -536,7 +514,6 @@ export function acquireInferenceGuard(opts: InferenceGuardOptions = {}): () => v
   };
 }
 
-/** Zero the counters and forget the last violation. */
 export function resetInferenceGuard(): void {
   c = newCounters();
 }
@@ -563,7 +540,6 @@ export function isInferenceGuardActive(): boolean {
   return active;
 }
 
-/** The same API as one object. */
 export const inferenceGuard = {
   install: installInferenceGuard,
   uninstall: uninstallInferenceGuard,

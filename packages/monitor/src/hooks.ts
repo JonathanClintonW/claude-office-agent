@@ -22,7 +22,7 @@ import { writeFileAtomic } from './config';
 export const HOOK_MARKER = 'agent-office-hook';
 export const FORWARDER_FILE = `${HOOK_MARKER}.cjs`;
 
-/** Events that support HTTP handlers. SessionStart only supports command hooks. */
+/** SessionStart only supports command hooks. */
 const COMMAND_ONLY: ReadonlySet<string> = new Set(['SessionStart']);
 
 export type HookMode = 'command' | 'http';
@@ -303,8 +303,6 @@ export function findNodeExecutable(env: NodeJS.ProcessEnv = process.env): string
   }
   return undefined;
 }
-
-// ---------------------------------------------------------------- duplicate scopes
 
 export interface HookScopeFile {
   scope: 'user' | 'project' | 'project-local';

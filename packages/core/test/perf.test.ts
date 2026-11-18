@@ -155,9 +155,9 @@ describe('core reducer performance', () => {
     };
     console.log(`[perf:core] caps ${JSON.stringify(m)}`);
 
-    expect(m.agentsBefore).toBeGreaterThan(O.maxAgents); // the workload really exceeds the cap…
-    expect(m.agentsAfterCapTick).toBeLessThanOrEqual(O.maxAgents); // …and Tick brings it back under
-    for (const a of agents) if (!TERMINAL_STATUSES.has(a.status)) expect(capped.agents[a.key]).toBeDefined(); // live agents are never dropped
+    expect(m.agentsBefore).toBeGreaterThan(O.maxAgents); // precondition: the workload really exceeds the cap
+    expect(m.agentsAfterCapTick).toBeLessThanOrEqual(O.maxAgents);
+    for (const a of agents) if (!TERMINAL_STATUSES.has(a.status)) expect(capped.agents[a.key]).toBeDefined();
     expect(Object.values(pruned.agents).every((a) => !TERMINAL_STATUSES.has(a.status))).toBe(true);
     const liveSessions = new Set(Object.values(pruned.agents).map((a) => a.sessionId));
     expect(Object.values(pruned.tasks).every((t) => liveSessions.has(t.sessionId))).toBe(true);

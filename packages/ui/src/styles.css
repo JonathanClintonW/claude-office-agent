@@ -117,7 +117,6 @@ code {
     repeating-conic-gradient(#121329 0 25%, #0f1022 0 50%) 0 0 / 16px 16px;
 }
 
-/* ---------------------------------------------------------------- HUD */
 .topbar {
   display: flex;
   flex-wrap: wrap;
@@ -314,7 +313,6 @@ input.text {
   padding: 0;
 }
 
-/* ---------------------------------------------------------------- banners */
 .banner {
   padding: 6px 12px;
   font-size: 13px;
@@ -330,7 +328,6 @@ input.text {
   background: #4a1d24;
 }
 
-/* ---------------------------------------------------------------- layout */
 .main {
   flex: 1;
   display: grid;
@@ -382,7 +379,6 @@ input.text {
   }
 }
 
-/* ---------------------------------------------------------------- portraits */
 .portrait {
   display: inline-flex;
   align-items: flex-end;
@@ -399,7 +395,6 @@ input.text {
   display: block;
 }
 
-/* ---------------------------------------------------------------- agent list */
 .agent-list {
   list-style: none;
   margin: 0;

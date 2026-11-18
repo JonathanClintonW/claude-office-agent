@@ -20,7 +20,6 @@ function check(layout: OfficeLayout): EditResult {
 const isWallAt = (layout: OfficeLayout, x: number, y: number) => (layout.walls ?? []).some((w) => w.x === x && w.y === y);
 const withWalls = (layout: OfficeLayout, walls: WallTile[]): OfficeLayout => ({ ...layout, walls });
 
-/** Apply the selected tool to a tile. */
 export function applyTool(layout: OfficeLayout, tool: EditTool, x: number, y: number): EditResult {
   const walls = layout.walls ?? [];
   if (tool === 'erase') {
@@ -92,8 +91,6 @@ export function updateZone(layout: OfficeLayout, id: string, patch: Partial<Zone
 export function removeZone(layout: OfficeLayout, id: string): EditResult {
   return check({ ...layout, zones: layout.zones.filter((z) => z.id !== id) });
 }
-
-// ------------------------------------------------------------------ rooms
 
 const overlapsAny = (rooms: readonly Room[], r: Pick<Room, 'x' | 'y' | 'w' | 'h'>) =>
   rooms.some((o) => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h);

@@ -1,4 +1,3 @@
-// Zero-extra-inference guard plugin.
 import { existsSync } from 'node:fs';
 import { TERMINAL_STATUSES, type HookScopeReport, type InferencePluginMeta } from '@agent-office/core';
 import { collectHookScopes } from '../hooks';

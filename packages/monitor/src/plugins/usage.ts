@@ -1,4 +1,3 @@
-// Observed token usage from transcripts.
 import { readFileSync, statSync } from 'node:fs';
 import { open, readdir, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -86,8 +85,6 @@ const LOOKUP_RETRY_MS = 60_000;
 const MAX_SUMMARY_SESSIONS = 500;
 const MAX_SUMMARY_AGENTS = 200;
 const MAX_MODEL_LEN = 100;
-
-// ---------------------------------------------------------------- pricing (pure)
 
 const MODEL_KEY = /^(?:[A-Za-z0-9][A-Za-z0-9._:@/[\]-]{0,99})?\*?$/;
 const PRICE_FIELDS = ['inputPerMTok', 'outputPerMTok', 'cacheWritePerMTok', 'cacheReadPerMTok'] as const;
@@ -185,8 +182,6 @@ export function estimateCost(byModel: Record<string, TokenCounts>, table: PriceT
   };
 }
 
-// ---------------------------------------------------------------- buckets (pure)
-
 export function emptyBucket(): UsageBucket {
   return { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, messages: 0 };
 }
@@ -220,8 +215,6 @@ function num(v: unknown): number {
 function optNum(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : undefined;
 }
-
-// ---------------------------------------------------------------- I/O
 
 /** One open per call: size, head bytes and up to maxBytes from offset. */
 export const readChunk: ChunkReader = async (file, offset, maxBytes, headBytes) => {
@@ -286,8 +279,6 @@ class TimeBox {
     return n;
   }
 }
-
-// ---------------------------------------------------------------- plugin state
 
 interface FileCursor {
   path: string;
@@ -362,8 +353,6 @@ export function usagePlugin(opts: UsagePluginOptions = {}): UsagePlugin {
   let pricingSig = '';
 
   const now = () => (ctx ? ctx.now() : Date.now());
-
-  // ---------- pricing
 
   function refreshPricing(): void {
     if (!ctx) return;

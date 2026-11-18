@@ -121,8 +121,6 @@ export const ALLOWLIST: AllowEntry[] = [
 /** Official Claude Code extension commands that only open its UI (never submit a prompt). */
 const KNOWN_CLAUDE_UI_COMMANDS = new Set(['claude-vscode.focus', 'claude-vscode.editor.openLast', 'claude-vscode.sidebar.open']);
 
-// ---------------------------------------------------------------- lexer
-
 interface Lexed {
   /** Code with every string literal (and template chunk) replaced by "§<index>" and regexes by /r/. */
   code: string;
@@ -263,8 +261,6 @@ export function lex(src: string): Lexed {
   }
   return { code: out.join(''), strings };
 }
-
-// ---------------------------------------------------------------- analysis
 
 const SDK_SPEC =
   /^(?:@anthropic-ai\/|anthropic$|@aws-sdk\/client-bedrock|@google-cloud\/(?:vertexai|aiplatform)|@google\/(?:genai|generative-ai)|@azure\/(?:openai|ai-)|@azure-rest\/ai-|@modelcontextprotocol\/|openai$|@openai\/|ai$|@ai-sdk\/|langchain|@langchain\/|llamaindex|ollama$|cohere-ai$|@mistralai\/|groq-sdk$|replicate$|@huggingface\/inference)/;
@@ -415,8 +411,6 @@ export function scanSource(rel: string, src: string, entry: AllowEntry | undefin
   }
   return { primitives, findings, transformed };
 }
-
-// ---------------------------------------------------------------- the repository
 
 function sourceFiles(): string[] {
   const roots: string[] = [join(ROOT, 'scripts')];

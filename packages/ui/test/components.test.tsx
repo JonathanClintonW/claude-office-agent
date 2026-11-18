@@ -184,8 +184,6 @@ describe('TaskBoard', () => {
   });
 });
 
-// ---------------------------------------------------------------- dashboard
-
 const gitOk: GitStatusOk = {
   ok: true,
   cwd: 'c:\\work\\app',

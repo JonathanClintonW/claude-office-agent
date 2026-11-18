@@ -28,8 +28,8 @@ export interface Rect {
 
 /**
  * Allowed zoom levels. From 1× up, whole steps make every art pixel an exact square of
- * screen pixels; half steps above 2× stay within one screen pixel of square (as the original
- * fit did). 0.5× and 0.75× exist only to overview big offices in small panes.
+ * screen pixels; half steps above 2× stay within one screen pixel of square. 0.5× and 0.75×
+ * exist only to overview big offices in small panes.
  */
 export const ZOOM_STEPS: readonly number[] = [0.5, 0.75, 1, 2, 2.5, 3, 3.5, 4, 5, 6, 8];
 export const MIN_ZOOM = ZOOM_STEPS[0]!;
@@ -41,7 +41,6 @@ export const KEY_PAN = 64;
 /** Pointer travel (screen px) before a press becomes a drag instead of a click. */
 export const DRAG_THRESHOLD = 4;
 
-/** The zoom step closest to `z`. */
 export function snapZoom(z: number): number {
   let best = ZOOM_STEPS[0]!;
   for (const s of ZOOM_STEPS) if (Math.abs(s - z) < Math.abs(best - z)) best = s;
@@ -55,9 +54,8 @@ export function stepZoom(zoom: number, dir: 1 | -1): number {
 }
 
 /**
- * Zoom at which the whole world fits in the view (with a small margin), using the original
- * office fit: half steps from 2× up, quarter steps below (never under 0.5×), so the initial
- * view fills the pane as before. The +/- controls then move through ZOOM_STEPS.
+ * Zoom at which the whole world fits in the view (with a small margin): half steps from 2× up,
+ * quarter steps below (never under 0.5×). The +/- controls then move through ZOOM_STEPS.
  */
 export function fitZoom(world: Size, view: Size, margin = 12): number {
   const raw = Math.min((view.w - margin * 2) / world.w, (view.h - margin * 2) / world.h);
@@ -76,7 +74,6 @@ function clampAxis(c: number, worldLen: number, viewLen: number, zoom: number): 
   return Math.min(Math.max(c, half - pad), worldLen - half + pad);
 }
 
-/** Keep the office on screen. */
 export function clampCamera(cam: Camera, world: Size, view: Size): Camera {
   const zoom = Math.min(Math.max(cam.zoom, MIN_ZOOM), MAX_ZOOM);
   return { zoom, x: clampAxis(cam.x, world.w, view.w, zoom), y: clampAxis(cam.y, world.h, view.h, zoom) };
@@ -115,12 +112,10 @@ export function panBy(cam: Camera, dx: number, dy: number, world: Size, view: Si
   return clampCamera({ ...cam, x: cam.x - dx / cam.zoom, y: cam.y - dy / cam.zoom }, world, view);
 }
 
-/** Centre the view on a world point, optionally at a new zoom. */
 export function centerOn(cam: Camera, p: Vec, world: Size, view: Size, zoom = cam.zoom): Camera {
   return clampCamera({ zoom, x: p.x, y: p.y }, world, view);
 }
 
-/** The world rectangle currently visible. */
 export function visibleRect(cam: Camera, view: Size): Rect {
   const w = view.w / cam.zoom;
   const h = view.h / cam.zoom;
@@ -142,7 +137,6 @@ export function approach(cam: Camera, goal: Camera, dtMs: number): Camera {
 
 export type CameraKeyAction = { type: 'pan'; dx: number; dy: number } | { type: 'zoom'; dir: 1 | -1 } | { type: 'fit' };
 
-/** Keyboard shortcuts for the office view. */
 export function keyAction(key: string): CameraKeyAction | undefined {
   switch (key) {
     case 'ArrowLeft':

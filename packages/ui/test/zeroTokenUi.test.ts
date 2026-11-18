@@ -1,11 +1,8 @@
 /**
- * Runtime zero-inference check for the UI's passive features: idle life (coffee, restroom and
- * other breaks), chit-chat dialogue, meetings, teamwork interactions for verified spawns and
- * handoffs, collaboration analysis, desk presentation, errors, analytics, replay and department
- * rules run for a long simulated period while every network primitive the page could use is
- * replaced by a recorder. None may be called. (The whole app is rendered under the same
- * recorders in zeroTokenApp.test.tsx; the browser e2e covers the built page; the monitor side is
- * covered by zeroTokenRuntime.test.ts and inference.test.ts.)
+ * Runtime zero-inference check for the UI's passive features (idle life, dialogue, meetings,
+ * teamwork, collaboration analysis, desk presentation, errors, analytics, replay, department rules):
+ * they run for a long simulated period while every network primitive is a recorder that must stay
+ * unused. zeroTokenApp.test.tsx renders the whole app under the same recorders.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createInitialState, defaultLayout, normalizeHookPayload, reduce, type MonitorEvent, type OfficeState } from '@agent-office/core';
@@ -53,7 +50,7 @@ afterAll(() => {
   for (const r of restore.reverse()) r();
 });
 
-// ------------------------------------------------------------------ a realistic observed session
+// A realistic observed session.
 
 const T0 = Date.now() - 30 * 60_000;
 let seq = 0;

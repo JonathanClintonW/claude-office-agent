@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultLayout, DEPARTMENT_KINDS, ROOM_KINDS } from '@agent-office/core';
-import { DEFAULT_DEPARTMENT, departmentFor, isDepartmentKind, matchingRule, moveRule, newRule, ROOM_KIND_LABELS } from '../src/departments';
+import { DEFAULT_DEPARTMENT, departmentFor, isDepartmentKind, matchesWordStart, matchingRule, moveRule, newRule, ROOM_KIND_LABELS } from '../src/departments';
 import { defaultSettings, getSettings, updateSettings, type DepartmentRule } from '../src/settings';
 import { assignDesks, seatsOf } from '../src/office/grid';
 import { DepartmentRules } from '../src/components/DepartmentRules';
@@ -20,6 +20,36 @@ describe('departmentFor', () => {
     expect(departmentFor({ agentType: 'security-auditor' }, DEFAULT_RULES)).toBe('security');
     expect(departmentFor({ agentType: 'devops-helper' }, DEFAULT_RULES)).toBe('devops');
     expect(departmentFor({ agentType: 'deployer' }, DEFAULT_RULES)).toBe('devops');
+  });
+
+  it('puts specific departments before broad ones and matches at word starts', () => {
+    expect(departmentFor({ agentType: 'security-reviewer' }, DEFAULT_RULES)).toBe('security');
+    expect(departmentFor({ agentType: 'pentest-security' }, DEFAULT_RULES)).toBe('security');
+    expect(departmentFor({ agentType: 'deployment-planner' }, DEFAULT_RULES)).toBe('devops');
+    expect(departmentFor({ agentType: 'latest-docs-fetcher' }, DEFAULT_RULES)).toBe('development'); // "latest" is not "test"
+    expect(departmentFor({ agentType: 'Testing' }, DEFAULT_RULES)).toBe('qa');
+    expect(departmentFor({ agentType: 'unit_tester' }, DEFAULT_RULES)).toBe('qa');
+    expect(departmentFor({ agentType: 'CodeReviewer' }, DEFAULT_RULES)).toBe('qa'); // camelCase words
+    expect(departmentFor({ agentType: 'Explorer' }, DEFAULT_RULES)).toBe('research');
+    expect(matchesWordStart('c:/work/myproject', 'myproject')).toBe(true);
+    expect(matchingRule({ cwd: 'C:\\Work\\MyProject' }, [{ id: 'p', department: 'qa', field: 'cwd', pattern: 'myproject' }])?.id).toBe('p');
+    expect(matchingRule({ cwd: 'C:\\Work\\MyProject' }, [{ id: 'p', department: 'qa', field: 'cwd', pattern: 'project' }])?.id).toBe('p'); // camelCase word
+    expect(matchingRule({ cwd: 'C:\\Work\\webshop' }, [{ id: 'p', department: 'qa', field: 'cwd', pattern: 'shop' }])).toBeUndefined();
+  });
+
+  it('upgrades an unchanged copy of the first default rule list, keeps customised lists', () => {
+    const byId = new Map(DEFAULT_RULES.map((r) => [r.id, r]));
+    const legacy = ['r-explore', 'r-plan', 'r-test', 'r-review', 'r-security', 'r-devops', 'r-deploy'].map((id) => ({ ...byId.get(id)! }));
+    const before = getSettings().departmentRules;
+    try {
+      updateSettings({ departmentRules: legacy });
+      expect(getSettings().departmentRules.map((r) => r.id)).toEqual(DEFAULT_RULES.map((r) => r.id));
+      const custom = [...legacy.slice(0, 6), { ...legacy[6]!, pattern: 'release' }];
+      updateSettings({ departmentRules: custom });
+      expect(getSettings().departmentRules).toEqual(custom);
+    } finally {
+      updateSettings({ departmentRules: before });
+    }
   });
 
   it('sends everything unmatched to development', () => {

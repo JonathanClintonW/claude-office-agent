@@ -183,7 +183,6 @@ export interface VisitorBody {
 type DoDirective = Extract<Directive, { type: 'do' }>;
 
 export type VisitorDirective =
-  /** Walk to a tile. */
   | { type: 'go'; to: Point }
   /** Do an activity there (same shape as the agents' simulated activities). */
   | DoDirective
@@ -340,7 +339,6 @@ export class VisitorDirector {
     return this.visitors.get(id)?.look;
   }
 
-  /** The visitors' meeting, if one is on. */
   currentMeeting(): VisitorMeetingInfo | undefined {
     const m = this.meeting;
     if (!m) return undefined;

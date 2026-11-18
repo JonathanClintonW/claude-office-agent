@@ -1,4 +1,3 @@
-// Editor for local department rules (rendered on the Settings page).
 import { useState } from 'react';
 import { DEPARTMENT_KINDS, type DepartmentKind } from '@agent-office/core';
 import { DEFAULT_DEPARTMENT, departmentFor, matchingRule, moveRule, newRule, ROOM_KIND_LABELS, RULE_FIELD_LABELS } from '../departments';
@@ -20,7 +19,8 @@ export function DepartmentRules() {
     <div className="dept-rules">
       <p className="muted small dept-note" role="note">
         Local heuristic, not a Claude role: these rules only choose which room's desks an agent prefers. They match real fields this app observed (agent
-        type, working directory, name) as case-insensitive text. The first matching rule wins; agents no rule matches sit in{' '}
+        type, working directory, name): a pattern matches at the start of a word, ignoring case, so &ldquo;test&rdquo; matches test-runner but not
+        latest. The first matching rule wins; agents no rule matches sit in{' '}
         {ROOM_KIND_LABELS[DEFAULT_DEPARTMENT]}.
       </p>
       {rules.length ? (
@@ -34,7 +34,7 @@ export function DepartmentRules() {
                   </option>
                 ))}
               </select>
-              <span className="muted small">contains</span>
+              <span className="muted small">has a word starting with</span>
               <input className="text" aria-label="Pattern" value={r.pattern} maxLength={120} placeholder="text" onChange={(e) => edit(r.id, { pattern: e.target.value })} />
               <span className="muted small">→</span>
               <select aria-label="Department" value={r.department} onChange={(e) => edit(r.id, { department: e.target.value as DepartmentKind })}>

@@ -5,9 +5,8 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
 /**
- * Dev only: inject the local monitor token so `npm run dev:ui` can talk to a running
- * monitor started with `agent-office start --dev`. Production builds contain no token;
- * the monitor (or the VS Code extension) injects it at serve time.
+ * Dev only: inject the local monitor token so `npm run dev:ui` can talk to `agent-office start --dev`.
+ * Production builds contain no token; the monitor (or the VS Code extension) injects it at serve time.
  */
 function devMonitorConfig(): Plugin {
   return {

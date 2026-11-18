@@ -18,7 +18,6 @@ export interface ArbiterActor {
   key: string;
   /** Simulated activity allowed: really idle, not stale, not celebrating a finished turn. */
   idle: boolean;
-  /** Real status, if known. */
   status?: AgentStatus;
   home: Point;
   /** Where the worker is heading or resting right now, if anywhere. */
@@ -46,9 +45,7 @@ function destination(d: Directive): Point | undefined {
 
 /**
  * How a worker rests on a tile: on its own home as its home says (seated at a desk, standing in
- * the lounge), anywhere else standing. Used both when a directive's destination is the home
- * (e.g. a stretch at the desk) and when a `home` directive finds the worker already there, so a
- * worker never ends up standing at its own desk.
+ * the lounge), anywhere else standing, so a worker never ends up standing at its own desk.
  */
 export function restPhase<P extends string>(at: Point, home: Point, homeArrive: P, elsewhere: P): P {
   return at.x === home.x && at.y === home.y ? homeArrive : elsewhere;

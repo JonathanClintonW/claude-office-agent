@@ -3,7 +3,7 @@ import { cueForStatus, MAX_PER_SECOND, MIN_GAP_MS, REAL_CUES, SIMULATED_CUES } f
 import { SoundEngine } from '../src/audio/engine';
 import { BARS_PER_SONG, chordNotes, composeBar, degreeNote, MAJOR, songFor, STEPS_PER_BAR } from '../src/audio/music';
 
-// ---------------------------------------------------------------- a minimal fake Web Audio API
+// A minimal fake Web Audio API.
 
 class Param {
   value = 0;
@@ -90,8 +90,6 @@ function setup(opts: { clock?: () => number } = {}) {
 
 afterEach(() => vi.useRealTimers());
 
-// ---------------------------------------------------------------- music
-
 describe('procedural music', () => {
   it('is deterministic and changes song every few bars', () => {
     expect(songFor(1, 0, 'day')).toEqual(songFor(1, 0, 'day'));
@@ -144,8 +142,6 @@ describe('procedural music', () => {
   });
 });
 
-// ---------------------------------------------------------------- cues
-
 describe('sound cues', () => {
   it('maps real status changes, never a first sighting', () => {
     expect(cueForStatus(undefined, 'waiting_permission')).toBeUndefined();
@@ -162,8 +158,6 @@ describe('sound cues', () => {
     for (const k of [...REAL_CUES, ...SIMULATED_CUES]) expect(MIN_GAP_MS[k]).toBeGreaterThan(0);
   });
 });
-
-// ---------------------------------------------------------------- engine
 
 describe('SoundEngine', () => {
   it('creates no audio at all while sound is off, and waits for a user gesture when on', () => {

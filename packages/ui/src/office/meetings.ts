@@ -402,8 +402,6 @@ export class MeetingScheduler implements BehaviorProvider {
     return out;
   }
 
-  // ---------------------------------------------------------------- internals
-
   private between([a, b]: [number, number]): number {
     return a + this.rng() * (b - a);
   }
@@ -615,8 +613,6 @@ export class MeetingScheduler implements BehaviorProvider {
     return Math.min(room.capacity > 0 ? room.capacity : positions, positions);
   }
 
-  // ---------------------------------------------------------------- social gatherings
-
   /** Common areas that can host a circle of `min` right now. */
   private socialVenues(now: number, taken: ReadonlySet<string>, min: number): Venue[] {
     if (!this.floor.length) return [];
@@ -739,8 +735,6 @@ export class MeetingScheduler implements BehaviorProvider {
     }
     return script;
   }
-
-  // ---------------------------------------------------------------- directives
 
   private directive(m: Meeting, p: Participant, a: Actor, now: number): Directive {
     if (m.phase === 'gathering' && !p.arrived && !(!a.moving && same(a.pos, p.seat.at))) return { type: 'go', to: p.seat.at };

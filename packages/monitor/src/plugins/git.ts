@@ -1,12 +1,9 @@
-// Read-only local Git status plugin.
-//
-// Safety rules (see docs/DASHBOARD.md):
-// - git is started ONLY through execFile('git', args, { cwd, timeout, maxBuffer, windowsHide: true }):
-//   no shell, a time budget and an output cap on every call.
-// - Only read-only subcommands from READ_ONLY_SUBCOMMANDS run. Network commands (fetch, pull, push,
-//   remote, ls-remote, clone, submodule) are never issued, so nothing leaves the machine.
-// - Only directories that are the cwd of an agent in the monitor state are inspected; params from
-//   the UI are validated against that set, so arbitrary paths cannot be probed.
+// Read-only local Git status plugin. Safety rules (see docs/DASHBOARD.md):
+// - git runs ONLY via execFile('git', args, { cwd, timeout, maxBuffer, windowsHide: true }): no shell,
+//   a time budget and an output cap on every call.
+// - Only READ_ONLY_SUBCOMMANDS run; network commands are never issued, so nothing leaves the machine.
+// - Only directories that are an agent's cwd in the monitor state are inspected; UI params are
+//   validated against that set, so arbitrary paths cannot be probed.
 // - `--no-optional-locks` keeps `git status` from rewriting the index; fsmonitor hooks, external
 //   diff drivers and textconv filters are disabled.
 // - No file contents, diffs, author names or emails are read or returned.
@@ -60,8 +57,6 @@ const SAFE_GLOBAL_ARGS = [
 ];
 
 type GitRun = { ok: true; stdout: string } | { ok: false; problem: GitProblem };
-
-// ---------------------------------------------------------------- pure parsing (exported for tests)
 
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/g;
 
@@ -272,8 +267,6 @@ export function potentialConflicts(
   return out.sort((x, y) => y.sessions.length - x.sessions.length || latest(y) - latest(x)).slice(0, GIT_LIMITS.maxConflicts);
 }
 
-// ---------------------------------------------------------------- process helpers
-
 function createLimiter(max: number) {
   let active = 0;
   const queue: Array<() => void> = [];
@@ -326,8 +319,6 @@ function isAbsoluteDir(p: string): boolean {
 function execDirOf(cwd: string): string {
   return process.platform === 'win32' ? fromGitBashPath(cwd) : cwd;
 }
-
-// ---------------------------------------------------------------- plugin
 
 interface AgentDir {
   cwd: string;

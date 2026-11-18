@@ -1,9 +1,6 @@
 /**
- * Which sound goes with what. Pure, so the rules can be tested and audited.
- *
- * Real cues follow observed agent state only (status changes, a finished turn, a failed tool
- * call, an agent walking in, a verified collaboration event). Simulated cues follow the office
- * animation (coffee machine, restroom, template speech, visitors) and never suggest real work.
+ * Which sound goes with what (pure, so the rules can be tested). Real cues follow observed agent
+ * state only; simulated cues follow the office animation and never suggest real work.
  */
 import type { AgentStatus } from '@agent-office/core';
 

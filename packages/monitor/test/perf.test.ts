@@ -1,4 +1,3 @@
-// Monitor ingest throughput, WebSocket fan-out convergence and snapshot size.
 // Thresholds are generous; the printed measurements are recorded in docs/VALIDATION.md.
 import { afterEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';

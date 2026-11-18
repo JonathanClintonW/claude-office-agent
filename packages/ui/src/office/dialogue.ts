@@ -170,8 +170,6 @@ export const DIALOGUE_THRESHOLDS = {
   recentFailureMs: 20 * 60_000,
 } as const;
 
-// ------------------------------------------------------------------ fact helpers (generic only)
-
 function failureOf(f: DialogueFacts | undefined, now: number): 'test' | 'build' | 'tool' | undefined {
   const r = f?.recentFailure;
   if (!r || now - r.at < 0 || now - r.at > DIALOGUE_THRESHOLDS.recentFailureMs) return undefined;
@@ -201,8 +199,6 @@ export function longWork(f: DialogueFacts | undefined): boolean {
 const isMorning = (h: number) => h >= 5 && h < 11;
 const isLate = (h: number) => h >= 20 || h < 5;
 const isNight = (c: DialogueInput) => c.night ?? (c.hour >= 19 || c.hour < 5);
-
-// ------------------------------------------------------------------ rules
 
 export interface DialogueRule {
   family: DialogueFamily;

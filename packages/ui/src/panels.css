@@ -32,7 +32,6 @@ input.text.wide {
   text-shadow: 2px 2px 0 var(--edge);
 }
 
-/* ---------------------------------------------------------------- inspector */
 .inspector {
   display: flex;
   flex-direction: column;
@@ -317,7 +316,6 @@ code.block {
   overflow-wrap: anywhere;
 }
 
-/* ---------------------------------------------------------------- dialogs */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -471,7 +469,6 @@ code.block {
   overflow-wrap: anywhere;
 }
 
-/* ---------------------------------------------------------------- toasts */
 .toasts {
   position: fixed;
   right: 14px;
@@ -522,7 +519,6 @@ code.block {
   }
 }
 
-/* ---------------------------------------------------------------- editor */
 .editor {
   padding: 12px;
 }

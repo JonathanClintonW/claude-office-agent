@@ -180,7 +180,6 @@ describe('default layout', () => {
     expect(typesIn('reception')).toContain('reception');
     expect(typesIn('reception')).toContain('noticeboard');
     expect(typesIn('collaboration')).toContain('table');
-    // desks in every department room
     for (const d of DEPARTMENT_KINDS) expect(typesIn(d), d).toContain('desk');
     expect(layout.items.filter((i) => i.type === 'desk').length).toBeGreaterThanOrEqual(30);
   });

@@ -47,7 +47,6 @@ const TOOL_ICON: Record<ToolStatus, [string, string]> = {
 
 type Tab = 'activity' | 'tools' | 'tasks' | 'log';
 
-/** Tools whose target is a single file path. */
 const FILE_TOOLS = new Set(['Read', 'Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'NotebookRead']);
 
 /** The file a tool call operates on, when the tool's target is a file path. */

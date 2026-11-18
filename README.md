@@ -188,7 +188,7 @@ The monitor checks the `Host` and `Origin` headers, requires a random local toke
 
 - **Subagents** appear when Claude Code reports `SubagentStart`. A subagent's parent is the agent whose `Agent`/`Task` tool call spawned it, so **nested subagents** are placed under the subagent that spawned them. Without that evidence the link is shown as *inferred*.
 - **Teammates** of an agent team are recognised from `TeammateIdle` and from task events that name a teammate.
-- **Departments.** Agents take a desk in a department room chosen by local rules over observed fields. By default an agent type containing `explore` or `plan` goes to Research, `test` or `review` to QA & Testing, `security` to Security, `devops` or `deploy` to DevOps, and everything else to Development. This is a seating heuristic, not a Claude role; edit the rules under **Settings → Departments**.
+- **Departments.** Agents take a desk in a department room chosen by local rules over observed fields. Rules match at the start of a word and the first match wins. By default an agent type with a word starting `security` goes to Security, `devops` or `deploy` to DevOps, `test` or `review` to QA & Testing, `explore` or `plan` to Research, and everything else (including main sessions and `general-purpose` subagents) to Development. This is a seating heuristic, not a Claude role; edit the rules under **Settings → Departments**.
 - **Team view.** The Team tab draws one card per session: a graph with the lead at the top and subagents and teammates under whoever spawned them (solid edges for verified links, dashed for inferred ones, amber arrows for task handoffs, a marker for parallel work), plus a members table that names each link and the evidence behind it.
 
 ## Meetings and collaboration

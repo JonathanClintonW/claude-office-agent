@@ -1,18 +1,9 @@
 /**
- * Usage analytics, history and replay contracts.
- *
- * Shared by the monitor's `usage` and `history` plugins and the UI. Every number carries an
- * explicit source so the UI never presents an estimate as an observation:
- *
- * - `transcript`  - token counts Claude Code itself recorded in its transcripts (observed).
- * - `claude-code` - the cost/duration Claude Code reported in its own `cost-state` records.
- * - `price-table` - an estimate computed from the user's own `<home>/pricing.json`.
- *
- * No price is ever built in or guessed.
+ * Usage analytics and history contracts. Every number carries its source so the UI never presents an
+ * estimate as an observation: `transcript` (tokens Claude Code recorded), `claude-code` (its own `cost-state`
+ * records) or `price-table` (estimate from the user's `<home>/pricing.json`). No price is ever built in or guessed.
  */
 import type { MonitorEvent } from '../events';
-
-// ---------------------------------------------------------------- sources
 
 export type UsageSource = 'transcript' | 'claude-code' | 'price-table';
 
@@ -21,8 +12,6 @@ export const USAGE_SOURCE_LABEL: Record<UsageSource, string> = {
   'claude-code': 'Reported by Claude Code',
   'price-table': 'Estimate from your price table',
 };
-
-// ---------------------------------------------------------------- tokens
 
 /** Token counts summed from assistant `message.usage` records (deduplicated by `message.id`). */
 export interface TokenCounts {
@@ -36,8 +25,6 @@ export interface UsageBucket extends TokenCounts {
   /** Distinct assistant messages (API responses) counted. */
   messages: number;
 }
-
-// ---------------------------------------------------------------- pricing (user supplied)
 
 /** Prices per million tokens, in the table's currency. */
 export interface ModelPrice {
@@ -79,8 +66,6 @@ export interface CostEstimate {
   unpricedCacheModels: string[];
 }
 
-// ---------------------------------------------------------------- reported by Claude Code
-
 export interface ReportedModelUsage {
   inputTokens?: number;
   outputTokens?: number;
@@ -99,8 +84,6 @@ export interface ReportedCost {
   at?: number;
   modelUsage?: Record<string, ReportedModelUsage>;
 }
-
-// ---------------------------------------------------------------- usage plugin results
 
 export type UsageAgentKind = 'main' | 'subagent' | 'sidechain';
 
@@ -209,8 +192,6 @@ export interface UsageMeta {
   backlogBytes: number;
   pricing: PricingStatus['state'];
 }
-
-// ---------------------------------------------------------------- history plugin results
 
 export interface HistorySessionEntry {
   sessionId: string;

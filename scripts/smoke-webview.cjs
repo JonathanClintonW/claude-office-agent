@@ -1,10 +1,8 @@
 /**
- * Smoke test for the VS Code webview build, run in a real browser (installed Microsoft Edge).
- *
- * Serves packages/vscode-extension/media/ui using the exact HTML the extension generates
- * (strict CSP, nonce, <base>), stubs `acquireVsCodeApi` like the VS Code host, feeds it a
- * snapshot from the running monitor, and checks that the office renders without CSP
- * violations and that host actions are posted back.
+ * Smoke test for the VS Code webview build in a real browser (installed Microsoft Edge): serves
+ * media/ui with the exact HTML the extension generates (strict CSP, nonce, <base>), stubs
+ * `acquireVsCodeApi`, feeds it a snapshot from the running monitor and checks that the office
+ * renders without CSP violations and that host actions are posted back.
  *
  * Usage: node scripts/smoke-webview.cjs   (requires `agent-office start` to be running)
  */

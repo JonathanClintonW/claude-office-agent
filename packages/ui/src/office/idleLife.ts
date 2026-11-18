@@ -29,7 +29,7 @@ import type { Actor, BehaviorProvider, ChatIcon, Directive, Face, Point, SpotKin
 import { pickLine, type DialogueFamily, type DialogueRole } from './dialogue';
 import type { OfficeWorld } from './world';
 
-// Contract types live in behavior.ts; re-exported for existing imports.
+// Contract types live in behavior.ts.
 export type { Actor, ChatIcon, Directive, Face, Point, Spot, World } from './behavior';
 export { buildWorld } from './world';
 
@@ -186,7 +186,6 @@ const key = (p: Point) => `${p.x},${p.y}`;
 const same = (a: Point, b: Point) => a.x === b.x && a.y === b.y;
 const dist = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-/** The behavior world, with the optional extras buildWorld adds (lounge seats, doorways). */
 type LifeWorld = World & Partial<Pick<OfficeWorld, 'lounges' | 'doorways'>>;
 
 /** Everything about a world that activities depend on (not the lighting). */
@@ -251,7 +250,6 @@ export class IdleDirector implements BehaviorProvider {
     return this.freq;
   }
 
-  /** Spot occupied (e.g. restroom door shows "occupied"). */
   isInUse(spotId: string): boolean {
     if (!this.reserved.has(`spot:${spotId}`)) return false;
     for (const s of this.states.values()) if (s.activity?.spotId === spotId && s.activity.phase === 'do') return true;
@@ -551,7 +549,6 @@ export class IdleDirector implements BehaviorProvider {
     return script;
   }
 
-  /** Room id containing a tile, if any. */
   private roomIdAt(p: Point): string | undefined {
     for (const r of this.world.rooms) if (p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h) return r.id;
     return undefined;

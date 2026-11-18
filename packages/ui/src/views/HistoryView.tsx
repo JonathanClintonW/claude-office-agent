@@ -480,8 +480,6 @@ function UsagePanel({ state, onRetry }: { state: Loadable<UsageSessionDetail>; o
   );
 }
 
-// ---------------------------------------------------------------- replay
-
 function agentLabel(state: OfficeState, ev: MonitorEvent): string {
   const a = state.agents[agentKeyFor(ev.sessionId, ev.agentId)];
   if (a) return displayName(a);

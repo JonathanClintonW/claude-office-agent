@@ -43,7 +43,6 @@ describe('normalizeHookPayload: validation', () => {
     expect(normalizeHookPayload(hook('PreToolUse', {}), NOW).ok).toBe(false);
     expect(normalizeHookPayload(hook('PermissionRequest', { tool_name: '' }), NOW).ok).toBe(false);
     expect(normalizeHookPayload(hook('TaskCreated', { task_subject: 'x' }), NOW).ok).toBe(false);
-    // numeric task ids are accepted and stringified
     const r = normalizeHookPayload(hook('TaskCreated', { task_id: 7, task_subject: 'x' }), NOW);
     expect(r.ok && r.event.kind === 'TaskCreated' && r.event.taskId).toBe('7');
   });
@@ -209,7 +208,6 @@ describe('pretrimHookPayload', () => {
     expect(out.permission_suggestions).toBeUndefined();
     expect(out.tool_response).toEqual({ success: true });
     expect(JSON.stringify(out).length).toBeLessThan(5000);
-    // the result is still a valid payload
     expect(normalizeHookPayload(out, NOW).ok).toBe(false); // tool_name missing in this synthetic payload
     expect(normalizeHookPayload({ ...out, tool_name: 'Write' }, NOW).ok).toBe(true);
   });

@@ -1,19 +1,15 @@
 /**
  * End-to-end zero-token check in a real browser (installed Microsoft Edge, headless).
  *
- *  1. Starts an ISOLATED monitor child process (temp AGENT_OFFICE_HOME, temp CLAUDE_CONFIG_DIR,
- *     temp user profile, free port, --no-discovery) from packages/monitor/dist/cli.cjs.
- *  2. Sends SIMULATED traffic with `cli.cjs simulate --linger <s>`.
- *  3. Opens http://127.0.0.1:<port>/ and intercepts every request at the context level
- *     (context.route('**'), context 'request' events, CDP Network events) plus every WebSocket
- *     (page 'websocket' events, CDP webSocketCreated). Non-loopback requests are aborted and counted.
- *  4. Clicks every nav tab, clicks a worker on the canvas (located through window.__officeScene),
- *     then stays idle long enough for idle life.
- *  5. Asserts: zero non-loopback requests, zero inference-host requests, no page errors or CSP
- *     violations, and meta.plugins.inference.officeInferenceCalls === 0 (when exposed).
- *  6. Measures page CPU during the idle window (CDP Performance: TaskDuration delta / wall time),
- *     the JS heap (after forced GC), DOM nodes, listeners and DOM mutations per second by component
- *     (MutationObserver), prints a JSON summary, exits non-zero on failure.
+ *  1. Starts an ISOLATED monitor (temp AGENT_OFFICE_HOME, CLAUDE_CONFIG_DIR and user profile, free port,
+ *     --no-discovery) and sends SIMULATED traffic with `cli.cjs simulate --linger <s>`.
+ *  2. Opens the UI and records every request (context.route('**'), 'request' events, CDP Network) and
+ *     WebSocket (page events, CDP webSocketCreated). Non-loopback requests are aborted and counted.
+ *  3. Clicks every nav tab and a worker on the canvas (via window.__officeScene), then stays idle.
+ *  4. Asserts zero non-loopback and inference-host requests, no page errors or CSP violations, and
+ *     meta.plugins.inference.officeInferenceCalls === 0 (when exposed).
+ *  5. Measures idle page CPU (CDP TaskDuration delta / wall time), JS heap after GC, DOM nodes, listeners
+ *     and DOM mutations per second by component; prints a JSON summary, exits non-zero on failure.
  *  Child processes and the temp dir are always cleaned up.
  *
  * Usage: node scripts/e2e-zero-token.cjs        (npm run e2e:zero-token)
@@ -208,7 +204,6 @@ async function main() {
   }, (IDLE_SECONDS + HIDDEN_SECONDS + 2 * FPS_EXPERIMENT_SECONDS + 300) * 1000);
 
   try {
-    // ---------------------------------------------------------------- monitor
     const port = await freePort();
     summary.port = port;
     monitor = child('monitor', [CLI, 'start', '--port', String(port), '--home', dirs.home, '--no-discovery'], env);
@@ -227,11 +222,9 @@ async function main() {
       return r.status === 200 ? JSON.parse(r.body) : undefined;
     };
 
-    // ---------------------------------------------------------------- simulated traffic
     sim = child('simulate', [CLI, 'simulate', '--port', String(port), '--linger', String(LINGER_SECONDS)], env);
     log(`monitor on ${port}; SIMULATED traffic started (linger ${LINGER_SECONDS}s)`);
 
-    // ---------------------------------------------------------------- browser + interception
     try {
       browser = await chromium.launch({
         channel: 'msedge',
@@ -284,7 +277,6 @@ async function main() {
     cdp.on('Network.requestWillBeSent', (e) => record(e.request.url, 'cdp', e.type || 'other'));
     cdp.on('Network.webSocketCreated', (e) => record(e.url, 'cdp-websocket', 'websocket'));
 
-    // ---------------------------------------------------------------- load
     await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load', timeout: 30_000 });
     await page.waitForFunction(() => Boolean(window.__officeScene && window.__officeStore), null, { timeout: 30_000 });
     await page.waitForFunction(
@@ -297,7 +289,6 @@ async function main() {
     );
     const loaded = await metrics(cdp);
 
-    // ---------------------------------------------------------------- tabs
     summary.tabs = [];
     for (const label of [...TABS.slice(1), TABS[0]]) {
       const before = pageErrors.length;
@@ -320,7 +311,6 @@ async function main() {
       if (!rendered) fail(`nav tab "${label}" rendered nothing`);
     }
 
-    // ---------------------------------------------------------------- click a worker on the canvas
     summary.workerClick = { ok: false };
     for (let attempt = 1; attempt <= 12 && !summary.workerClick.ok; attempt++) {
       const target = await page.evaluate(() => {
@@ -359,7 +349,6 @@ async function main() {
     }
     if (!summary.workerClick.ok) fail(`could not select a worker on the canvas: ${summary.workerClick.lastError}`);
 
-    // ---------------------------------------------------------------- idle window
     // Let the scripted scenario finish so the simulated sessions are really idle.
     await page
       .waitForFunction(
@@ -504,7 +493,6 @@ async function main() {
       await page.waitForTimeout(500);
     }
 
-    // ---------------------------------------------------------------- monitor-side counters
     const st = await state();
     if (!st) fail('GET /api/state failed');
     else {
@@ -522,7 +510,6 @@ async function main() {
     }
     if (!monitor.alive()) fail('the monitor process died during the run');
 
-    // ---------------------------------------------------------------- network verdict
     const classified = seen.map((s) => ({ ...s, ...classifyUrl(s.url) }));
     const network = classified.filter((s) => s.network);
     const external = [...new Set(network.filter((s) => !s.loopback).map((s) => `${s.via}:${s.url}`))];

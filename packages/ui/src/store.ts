@@ -75,10 +75,7 @@ export class OfficeStore {
 
   send: Transport['send'] = (m) => this.transport.send(m);
 
-  /**
-   * Read-only query answered by a monitor plugin (`plugin.route`). Never triggers any model
-   * inference: plugins only read local data.
-   */
+  /** Read-only query answered by a monitor plugin (`plugin.route`); never triggers model inference. */
   rpc<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     if (this.snap.connection !== 'open') return Promise.reject(new Error('Not connected to the monitor'));
     const id = ++this.rpcSeq;

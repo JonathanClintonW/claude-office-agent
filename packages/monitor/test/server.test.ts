@@ -324,7 +324,6 @@ describe('monitor server', () => {
       expect(json).not.toContain('SECRET-PEER-TOKEN');
       expect(json).not.toContain('SECRET-PIPE');
 
-      // status change
       writeFileSync(join(dir, `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: live, status: 'idle', statusUpdatedAt: Date.now() - 2000 }));
       await monitor.scanNow();
       expect(monitor.getState().agents[live]!.status).toBe('idle');

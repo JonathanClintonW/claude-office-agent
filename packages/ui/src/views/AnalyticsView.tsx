@@ -16,7 +16,7 @@ import { formatMoney, formatTokens, METRIC_DEFINITIONS, stateMetrics, tokensOf }
 import { ago, useStoreInstance } from '../hooks';
 import type { ViewProps } from './types';
 
-// ---------------------------------------------------------------- shared helpers (also used by HistoryView)
+// Shared helpers, also used by HistoryView.
 
 export type Loadable<T> =
   | { status: 'idle' }
@@ -191,8 +191,6 @@ export function PricingNote({ pricing }: { pricing: PricingStatus }) {
 }
 
 const MAX_ROWS = 100;
-
-// ---------------------------------------------------------------- view
 
 export function AnalyticsView({ snap, now, onSelectAgent }: ViewProps) {
   const connected = snap.connection === 'open';

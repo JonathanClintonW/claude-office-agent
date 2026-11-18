@@ -33,10 +33,8 @@ function clip(s: string, max: number): string {
 }
 
 /**
- * Lead at the top, subagents and teammates indented under whoever spawned them, one node per
- * agent (names are unique within the team). Solid edges are verified by hook events, dashed
- * edges are inferred (the note says why). Task handoffs are drawn as arrows on the right, and
- * `∥` marks agents working in parallel. Click a node to inspect the agent.
+ * Lead at the top, subagents and teammates indented under whoever spawned them. Solid edges are
+ * verified by hook events, dashed edges are inferred (the note says why); `∥` marks parallel work.
  */
 export function TeamGraph({ team, onSelectAgent }: Props) {
   const uid = useId().replace(/[^A-Za-z0-9_-]/g, '');

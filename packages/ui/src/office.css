@@ -129,7 +129,7 @@
   color: #c9a7ff;
 }
 
-/* ---------------------------------------------------------------- layout editor */
+/* Layout editor */
 .tool-group .tool-group-title {
   margin: 10px 0 0;
 }
@@ -143,7 +143,6 @@
   padding: 3px 6px;
 }
 
-/* ---------------------------------------------------------------- department rules */
 .dept-rules .dept-note {
   max-width: 720px;
 }

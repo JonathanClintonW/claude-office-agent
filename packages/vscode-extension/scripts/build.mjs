@@ -55,7 +55,6 @@ for (const name of BUNDLED) {
   writeFileSync(join(root, 'media/ui/licenses', `${name.replace('/', '__')}-LICENSE.txt`), `${name}@${version} (${license})\n\n${text}`);
 }
 if (missing.length) throw new Error(`No licence file found for bundled package(s): ${missing.join(', ')}`);
-// The project's own licence and notices go into the extension package too.
 for (const f of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) {
   if (existsSync(join(root, '../..', f))) cpSync(join(root, '../..', f), join(root, f));
 }

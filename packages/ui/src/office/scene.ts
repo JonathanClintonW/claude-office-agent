@@ -172,7 +172,6 @@ interface Walker {
   arrive: Phase;
   target?: Point;
   facing: 'down' | 'up' | 'left' | 'right';
-  /** Stuck detection for the current walk. */
   watch: ProgressWatch;
 }
 
@@ -235,7 +234,6 @@ interface Worker {
   /** View and time `pres` was computed for. */
   presView?: WorkerView;
   presAt: number;
-  /** Stuck detection for the current walk. */
   watch: ProgressWatch;
   leaving: boolean;
   lastToolId?: string;
@@ -249,7 +247,6 @@ interface Worker {
   perform?: Extract<Directive, { type: 'do' }>;
   /** Desk presentation for the real state, computed once per frame. */
   pres?: WorkPresentation;
-  /** Simulated speech bubble (local template line), drawn in screen space. */
   speech: Speech;
 }
 
@@ -311,9 +308,8 @@ const BOTTOM_WALL = 6;
 /** How dark it is; drives the strength of lamp, screen and prop glows. */
 const DARKNESS: Record<Sky, number> = { day: 0, dawn: 0.2, dusk: 0.28, night: 0.48 };
 /**
- * Ambient light, multiplied over the room. Multiplying scales each colour channel instead of
- * mixing in a flat dark wash, so the office keeps its colours after dark rather than turning
- * a muddy near-greyscale. The cool night tint still reads as night.
+ * Ambient light, multiplied over the room: scaling each colour channel (instead of mixing in a
+ * flat dark wash) keeps the office's colours after dark.
  */
 const AMBIENT: Record<Sky, number> = { day: 0xffffff, dawn: 0xf2ded2, dusk: 0xdcc8d8, night: 0x9ca8d8 };
 const SCREEN_LIGHT: Partial<Record<ScreenKind, number>> = {
@@ -537,7 +533,7 @@ export class OfficeScene {
     this.textures.clear();
   }
 
-  // ------------------------------------------------------------- public API
+  // --- public API
 
   setLayout(layout: OfficeLayout): void {
     if (this.layout && JSON.stringify(this.layout) === JSON.stringify(layout)) return;
@@ -629,10 +625,7 @@ export class OfficeScene {
     for (const g of this.guests.values()) g.node.eventMode = on ? 'none' : 'static';
   }
 
-  /**
-   * Plug in another (lower-priority) behavior provider, e.g. simulated meetings. Providers
-   * are asked in the order added after the idle director unless `first` is set.
-   */
+  /** Plug in another behavior provider, asked after the existing ones unless `first` is set. */
   addBehaviorProvider(p: BehaviorProvider, first = false): void {
     if (this.behaviors.includes(p)) return;
     if (first) this.behaviors.unshift(p);
@@ -734,7 +727,7 @@ export class OfficeScene {
     if (this.ready && this.layout) this.reconcile(false);
   }
 
-  // ------------------------------------------------------------- camera API
+  // --- camera API
 
   private worldSize(): Size {
     const L = this.layout;
@@ -847,7 +840,6 @@ export class OfficeScene {
     return this.visitors.requestMeeting(roomId);
   }
 
-  /** Desks in a room and how many are assigned to agents. */
   roomDesks(roomId: string): { desks: number; assigned: number } {
     const desks = this.seats.filter((s) => s.roomId === roomId);
     const taken = new Set([...this.assignment.values()].filter(Boolean));
@@ -858,7 +850,7 @@ export class OfficeScene {
     return { x: w.pos.x * TILE + TILE / 2, y: (w.pos.y + 1) * TILE - CHAR_H / 2 };
   }
 
-  // ------------------------------------------------------------- room
+  // --- room
 
   private t(key: string, make: () => HTMLCanvasElement): Texture {
     let t = this.textures.get(key);
@@ -933,13 +925,13 @@ export class OfficeScene {
     const W = L.cols * TILE;
     const H = L.rows * TILE;
 
-    // frame around the office (the canvas now fills the whole view)
+    // frame around the office
     this.frameLayer.clear();
     this.frameLayer.rect(4, 4, W + 8, H + BOTTOM_WALL + 8).fill({ color: 0x000000, alpha: 0.45 });
     this.frameLayer.rect(-4, -4, W + 8, H + BOTTOM_WALL + 8).fill(0x2a1c14);
     this.frameLayer.rect(-4, -4, W + 8, 1).fill(0x4a3326);
 
-    // floor: one texture for the whole floor (room finishes + classic wood elsewhere)
+    // floor: one texture for the whole floor (room finishes + wood elsewhere)
     const floorKey = `floormap|${L.cols}x${L.rows}|${JSON.stringify(this.rooms.map((r) => [r.kind, r.x, r.y, r.w, r.h]))}`;
     if (this.floorKey && this.floorKey !== floorKey) {
       this.textures.get(this.floorKey)?.destroy(true);
@@ -1300,7 +1292,7 @@ export class OfficeScene {
     this.applyCamera();
   }
 
-  // ------------------------------------------------------------- workers
+  // --- workers
 
   private visible(v: WorkerView, now: number): boolean {
     if (!TERMINAL_STATUSES.has(v.status)) return true;
@@ -1486,7 +1478,7 @@ export class OfficeScene {
     }
   }
 
-  // ------------------------------------------------------------- behavior (directives)
+  // --- behavior (directives)
 
   private updateBehaviorsEnabled(): void {
     this.behaviorsOn = this.idleLife && !this.editMode;
@@ -2308,7 +2300,7 @@ export class OfficeScene {
     }
   }
 
-  // ------------------------------------------------------------- pointer / camera / editing
+  // --- pointer / camera / editing
 
   private tileAt(e: FederatedPointerEvent): Point {
     const p = this.root.toLocal(e.global);

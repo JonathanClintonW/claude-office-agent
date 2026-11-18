@@ -1,7 +1,4 @@
-/**
- * Shared office vocabulary.
- * Room kinds are layout semantics, NOT verified Claude roles.
- */
+/** Room kinds are layout semantics, NOT verified Claude roles. */
 export const ROOM_KINDS = [
   'office',
   'development',

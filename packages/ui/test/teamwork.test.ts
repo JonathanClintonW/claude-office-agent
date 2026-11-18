@@ -3,7 +3,6 @@ import type { AgentStatus } from '@agent-office/core';
 import type { Actor, Directive, Point, TeamEvent, World } from '../src/office/behavior';
 import { DEFAULT_TEAMWORK_OPTIONS, TeamworkProvider, type TeamworkOptions } from '../src/office/teamwork';
 
-/** Deterministic RNG. */
 function seeded(seed = 42): () => number {
   let s = seed;
   return () => {
