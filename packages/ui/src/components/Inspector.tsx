@@ -22,6 +22,7 @@ import type { HostInfo } from '../transport';
 import { GitSummary, useGitStatus } from '../views/GitView';
 import { KindBadge, SimBadge, SourceTag, StatusPill } from './common';
 import { Portrait } from './Portrait';
+import { Wallet } from './Wallet';
 import '../dashboard.css';
 
 interface Props {
@@ -327,6 +328,8 @@ export function Inspector({ agent: a, state, now, host, onSelect, onClose, onOpe
               {a.version ? <Field label="Claude Code">{a.version}</Field> : null}
               {a.backgroundRunning ? <Field label="Background tasks">{a.backgroundRunning} running at last turn end</Field> : null}
             </dl>
+
+            <Wallet agent={a} now={now} state={state} />
 
             <h3>Timing</h3>
             <dl className="facts">

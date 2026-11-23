@@ -29,6 +29,7 @@ const SPOT_OF: Partial<Record<FurnitureType, SpotKind>> = {
   board: 'board',
   whiteboard: 'whiteboard',
   plant: 'plant',
+  arcade: 'arcade',
 };
 
 /** Rooms where free tiles around tables count as (standing) seats when there are no chairs. */

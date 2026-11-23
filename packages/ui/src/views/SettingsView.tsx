@@ -43,6 +43,13 @@ export function SettingsView(_props: ViewProps) {
           <input type="checkbox" checked={s.reduceMotion} onChange={(e) => update({ reduceMotion: e.target.checked })} />
           <span>Reduce motion</span>
         </label>
+        <label
+          className="ctl check"
+          title="A game layer: agents earn 1 coin per second of observed working time and spend coins on simulated coffee, snacks and desk upgrades. Not money, not tokens."
+        >
+          <input type="checkbox" checked={s.coins} onChange={(e) => update({ coins: e.target.checked })} />
+          <span>Office coins (game)</span>
+        </label>
       </div>
       <h3>Sound</h3>
       <p className="muted small">

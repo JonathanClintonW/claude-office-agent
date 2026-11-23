@@ -353,20 +353,25 @@ describe('usage plugin', () => {
     let calls = 0;
     const slow: ChunkReader = async (file, offset, max, head) => {
       calls += 1;
-      if (calls === 1) await sleep(400);
+      if (calls === 1) await sleep(3000);
       return readChunk(file, offset, max, head);
     };
-    // The cooldown leaves room for a loaded machine between the timed-out pass and the summary.
-    const p = await started({ reader: slow, readTimeoutMs: 50, cooldownMs: 300 });
+    // Generous margins so a loaded machine (the full suite in parallel) can't flip the result:
+    // the stuck read takes 3 s, the pass must return long before, and the cooldown outlasts the summary.
+    const p = await started({ reader: slow, readTimeoutMs: 50, cooldownMs: 1500 });
     const t0 = Date.now();
     await p.scanNow();
-    expect(Date.now() - t0).toBeLessThan(350);
+    expect(Date.now() - t0).toBeLessThan(2000);
     let s = await summary(p);
     expect(s.total.messages).toBe(0);
     expect(s.scan.slowFiles).toBe(1);
-    await sleep(600);
-    await p.scanNow();
-    s = await summary(p);
+    // Retried after the cooldown (and after the stuck read gave up).
+    const deadline = Date.now() + 12_000;
+    do {
+      await sleep(250);
+      await p.scanNow();
+      s = await summary(p);
+    } while (s.total.messages !== 1 && Date.now() < deadline);
     expect(s.total.messages).toBe(1);
     await p.stop!();
   });

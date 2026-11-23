@@ -87,6 +87,8 @@ export interface Agent {
   endReason?: string;
   /** Set by Tick when no event has been seen for a while. Cleared by any event. */
   stale?: boolean;
+  /** Observed working time (ms): gaps between events while `working`, each capped like the stale limits. */
+  workMs?: number;
 
   currentToolId?: string;
   tools: ToolCall[];
@@ -191,6 +193,38 @@ export interface ReducerOptions {
   maxAgents: number;
   /** Upper bound on tasks kept while sessions are alive (oldest finished tasks are dropped first). */
   maxTasks: number;
+}
+
+function isToolRunning(a: Pick<Agent, 'currentToolId' | 'tools'>): boolean {
+  return a.currentToolId !== undefined && a.tools.some((t) => t.id === a.currentToolId && t.status === 'running');
+}
+
+/** Longest quiet gap that still counts as work: the same limits that flag an agent as quiet. */
+export function workGapCap(toolRunning: boolean, o: Pick<ReducerOptions, 'staleAfterMs' | 'staleToolAfterMs'> = DEFAULT_REDUCER_OPTIONS): number {
+  return toolRunning ? o.staleToolAfterMs : o.staleAfterMs;
+}
+
+export interface WorkSample {
+  workMs?: number;
+  status: AgentStatus;
+  lastEventAt: number;
+  toolRunning?: boolean;
+}
+
+/**
+ * Observed working time up to `now`: the accumulated `workMs` plus the current stretch while the
+ * agent is working. The current stretch is capped like the gaps, so a session stuck in
+ * `working` without events stops counting.
+ */
+export function workedMs(a: WorkSample, now: number): number {
+  const done = a.workMs ?? 0;
+  if (a.status !== 'working' || !(now > a.lastEventAt)) return done;
+  return done + Math.min(now - a.lastEventAt, workGapCap(Boolean(a.toolRunning)));
+}
+
+/** workedMs for a full Agent record. */
+export function agentWorkedMs(a: Agent, now: number): number {
+  return workedMs({ workMs: a.workMs, status: a.status, lastEventAt: a.lastEventAt, toolRunning: isToolRunning(a) }, now);
 }
 
 export const DEFAULT_REDUCER_OPTIONS: ReducerOptions = {
@@ -411,6 +445,7 @@ class Ctx {
     }
     real.firstSeenAt = Math.min(real.firstSeenAt, s.firstSeenAt);
     real.lastEventAt = Math.max(real.lastEventAt, s.lastEventAt);
+    if (s.workMs) real.workMs = (real.workMs ?? 0) + s.workMs;
     for (const src of s.sources) if (!real.sources.includes(src)) real.sources.push(src);
     real.teamName ??= s.teamName;
     real.counts.turns += s.counts.turns;
@@ -444,8 +479,15 @@ class Ctx {
     return ev.agentId ? this.ensureSubagent(ev.agentId) : this.ensureSession();
   }
 
+  /** Count the time since the agent's last event as work if it was working (see workedMs). */
+  addWork(a: Agent, ts: number): void {
+    if (a.status !== 'working' || !(ts > a.lastEventAt)) return;
+    a.workMs = (a.workMs ?? 0) + Math.min(ts - a.lastEventAt, workGapCap(isToolRunning(a), this.o));
+  }
+
   touch(a: Agent): void {
     const ev = this.ev;
+    this.addWork(a, ev.ts);
     if (ev.ts > a.lastEventAt) a.lastEventAt = ev.ts;
     if (!a.sources.includes(ev.source)) a.sources.push(ev.source);
     a.stale = undefined;
@@ -1295,6 +1337,7 @@ function onTranscriptSeen(c: Ctx, ev: EventOf<'TranscriptSeen'>): void {
   }
   if (ev.lastActivityAt) {
     s.transcriptLastActivityAt = Math.max(s.transcriptLastActivityAt ?? 0, ev.lastActivityAt);
+    c.addWork(s, ev.lastActivityAt);
     if (ev.lastActivityAt > s.lastEventAt) s.lastEventAt = ev.lastActivityAt;
   }
   if (isNew) {
@@ -1316,6 +1359,7 @@ function onTranscriptSubagent(c: Ctx, ev: EventOf<'TranscriptSubagentSeen'>): vo
   if (!a.sources.includes('transcript')) a.sources.push('transcript');
   if (ev.description && !a.description) a.description = ev.description;
   if (ev.spawnToolUseId && a.spawnToolUseId !== ev.spawnToolUseId) linkExactSpawn(c, a, ev.spawnToolUseId);
+  if (ev.lastActivityAt) c.addWork(a, ev.lastActivityAt);
   if (ev.lastActivityAt && ev.lastActivityAt > a.lastEventAt) a.lastEventAt = ev.lastActivityAt;
   if (isNew) a.firstSeenAt = ev.lastActivityAt ?? ev.ts;
   // Hook data (if any) wins; transcript metadata only fills in what we never saw.

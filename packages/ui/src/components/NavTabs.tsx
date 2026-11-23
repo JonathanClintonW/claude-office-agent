@@ -8,6 +8,7 @@ const TABS: Array<[ViewId, string]> = [
   ['analytics', 'Analytics'],
   ['history', 'History'],
   ['team', 'Team'],
+  ['shop', 'Shop'],
   ['settings', 'Settings'],
 ];
 

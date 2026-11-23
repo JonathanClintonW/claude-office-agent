@@ -60,6 +60,8 @@ vi.mock('../src/office/scene', () => {
     setEditMode = record('setEditMode');
     setIdleLife = record('setIdleLife');
     setVisitors = record('setVisitors');
+    setEconomy = record('setEconomy');
+    setTopEarner = record('setTopEarner');
     setSound = record('setSound');
     setOpenTasks = record('setOpenTasks');
     setHourOverride = record('setHourOverride');
@@ -442,6 +444,9 @@ describe('the whole app runs with zero network calls (zero office inference)', (
     fireEvent.click(within(page).getByLabelText('Pause'));
     page = await openTab('Team');
     expect(within(page).getAllByRole('article').length).toBeGreaterThan(0);
+    page = await openTab('Shop');
+    expect(within(page).getByText(/not money and not Claude tokens/)).toBeTruthy();
+    expect(within(page).getAllByRole('row').length).toBeGreaterThan(1);
     page = await openTab('Settings');
     const rulesBefore = scene.calls.filter(([n]) => n === 'setDepartmentRules').length;
     fireEvent.click(within(page).getByRole('button', { name: /Add rule/i }));

@@ -24,10 +24,12 @@ export type SfxKind =
   /** Simulated: someone leaves the restroom. */
   | 'flush'
   /** Simulated: a template speech line appears. */
-  | 'chatter';
+  | 'chatter'
+  /** Simulated: an agent spends office coins (game layer). */
+  | 'coin';
 
 export const REAL_CUES: readonly SfxKind[] = ['arrive', 'done', 'attention', 'failed', 'toolFail', 'handoff'];
-export const SIMULATED_CUES: readonly SfxKind[] = ['visitor', 'coffee', 'flush', 'chatter'];
+export const SIMULATED_CUES: readonly SfxKind[] = ['visitor', 'coffee', 'flush', 'chatter', 'coin'];
 
 /** Sound for a real status change, if any (none for a first sighting or an unchanged status). */
 export function cueForStatus(prev: AgentStatus | undefined, next: AgentStatus): SfxKind | undefined {
@@ -57,6 +59,7 @@ export const MIN_GAP_MS: Record<SfxKind, number> = {
   coffee: 3_000,
   flush: 3_000,
   chatter: 700,
+  coin: 400,
 };
 
 /** At most this many effects start within any one second. */

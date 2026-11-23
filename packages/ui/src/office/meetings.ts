@@ -90,6 +90,8 @@ export interface MeetingOptions {
   departureStagger: number;
   /** Local hour (0-23) for time-of-day template lines. Default: the local clock. */
   hourOf?: (now: number) => number;
+  /** Rooms another activity is using right now (e.g. a pizza party): no meeting or gathering starts there. */
+  roomBusy?: (roomId: string) => boolean;
 }
 
 export const DEFAULT_MEETING_OPTIONS: MeetingOptions = {
@@ -538,7 +540,7 @@ export class MeetingScheduler implements BehaviorProvider {
     const taken = this.takenTiles(actors);
 
     const rooms = this.world.rooms.filter((r) => {
-      if (!isMeetingKind(r.kind) || this.meetings.has(r.id) || (this.roomCooldown.get(r.id) ?? 0) > now) return false;
+      if (!isMeetingKind(r.kind) || this.meetings.has(r.id) || (this.roomCooldown.get(r.id) ?? 0) > now || this.o.roomBusy?.(r.id)) return false;
       return this.roomCapacity(r, taken) >= minP;
     });
     const socialMin = Math.max(3, Math.floor(this.o.socialSize[0]));
@@ -619,7 +621,7 @@ export class MeetingScheduler implements BehaviorProvider {
     const out: Venue[] = [];
     const keys = new Set<string>();
     const add = (v: Venue) => {
-      if (keys.has(v.key) || this.meetings.has(v.key) || (this.roomCooldown.get(v.key) ?? 0) > now || !this.circle(v, min, taken)) return;
+      if (keys.has(v.key) || this.meetings.has(v.key) || (this.roomCooldown.get(v.key) ?? 0) > now || (v.room && this.o.roomBusy?.(v.room.id)) || !this.circle(v, min, taken)) return;
       keys.add(v.key);
       out.push(v);
     };

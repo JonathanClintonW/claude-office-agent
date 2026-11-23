@@ -9,4 +9,4 @@ export interface ViewProps {
   onSelectAgent(key: string): void;
 }
 
-export type ViewId = 'office' | 'tasks' | 'errors' | 'git' | 'analytics' | 'history' | 'team' | 'settings';
+export type ViewId = 'office' | 'tasks' | 'errors' | 'git' | 'analytics' | 'history' | 'team' | 'shop' | 'settings';

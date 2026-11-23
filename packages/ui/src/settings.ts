@@ -34,6 +34,8 @@ export interface OfficeSettings {
   minimap: boolean;
   /** Fewer particles, no bobbing/flashing. Defaults to the OS preference. */
   reduceMotion: boolean;
+  /** Office coins: agents earn them for observed working time and spend them on simulated breaks and desk upgrades. */
+  coins: boolean;
   departmentRules: DepartmentRule[];
 }
 
@@ -61,6 +63,7 @@ export function defaultSettings(): OfficeSettings {
     roomLabels: true,
     minimap: true,
     reduceMotion: prefersReducedMotion(),
+    coins: true,
     // The first matching rule wins, so specific departments come before broad ones:
     // "security-reviewer" is Security (not QA), "deployment-planner" is DevOps (not Research).
     departmentRules: [
@@ -116,6 +119,7 @@ function sanitize(raw: unknown): OfficeSettings {
     roomLabels: typeof r.roomLabels === 'boolean' ? r.roomLabels : d.roomLabels,
     minimap: typeof r.minimap === 'boolean' ? r.minimap : d.minimap,
     reduceMotion: typeof r.reduceMotion === 'boolean' ? r.reduceMotion : d.reduceMotion,
+    coins: typeof r.coins === 'boolean' ? r.coins : d.coins,
     departmentRules: isLegacyDefault(rules) ? d.departmentRules : rules,
   };
 }

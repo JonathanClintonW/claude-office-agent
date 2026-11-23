@@ -245,6 +245,14 @@ describe('buildWorld (older layouts and edge cases)', () => {
     expect(buildWorld(inReception, [], false).lounges.map((s) => s.id)).toEqual(['c1', 'c3']);
   });
 
+  it('offers an arcade spot on the free tile in front of an arcade cabinet, facing it', () => {
+    const base = defaultLayout();
+    const l: OfficeLayout = { ...base, items: [...base.items, { id: 'arcade-1', type: 'arcade', x: 36, y: 15 }] };
+    const arcade = buildWorld(l, [], false).spots.filter((s) => s.kind === 'arcade');
+    expect(arcade).toEqual([{ id: 'arcade-1', kind: 'arcade', at: { x: 36, y: 16 }, face: 'up', roomId: 'break' }]);
+    expect(buildWorld(base, [], false).spots.some((s) => s.kind === 'arcade')).toBe(false);
+  });
+
   it('drops spots that cannot be reached', () => {
     const base = openOfficeLayout();
     const sealed: OfficeLayout = {

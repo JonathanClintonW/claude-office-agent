@@ -15,6 +15,7 @@ import { allDialogueLines, isTemplateLine, pickLine, type DialogueRole } from '.
 import { seatsOf } from '../src/office/grid';
 import { IdleDirector } from '../src/office/idleLife';
 import { MeetingScheduler } from '../src/office/meetings';
+import { PartyPlanner } from '../src/office/party';
 import { TeamworkProvider } from '../src/office/teamwork';
 import { workPresentation } from '../src/office/poses';
 import { buildWorld } from '../src/office/world';
@@ -196,7 +197,11 @@ describe('UI passive features make no network calls (zero office inference)', ()
     const meetings = new MeetingScheduler(random);
     const teamwork = new TeamworkProvider(random);
     // Priority order as in the scene: verified teamwork first, then meetings, then idle life.
-    const providers: BehaviorProvider[] = [teamwork, meetings, director];
+    // Pizza parties are paid locally (office coins); here every party is simply allowed.
+    const party = new PartyPlanner(random);
+    let partiesPaid = 0;
+    party.setFunding(() => (partiesPaid++, true));
+    const providers: BehaviorProvider[] = [teamwork, party, meetings, director];
     for (const p of providers) {
       p.setWorld(world);
       p.setEnabled(true);
@@ -213,6 +218,7 @@ describe('UI passive features make no network calls (zero office inference)', ()
         kind: i % 3 ? 'subagent' : 'session',
         sessionId: `s${i % 3}`,
         status: 'idle',
+        coins: 200,
         finishedAt: start - i * 60_000,
         lastWorkMs: i * 5 * 60_000,
         ...(i % 2 ? { recentFailure: { kind: 'test' as const, at: start - 5 * 60_000 } } : {}),
@@ -257,6 +263,8 @@ describe('UI passive features make no network calls (zero office inference)', ()
     expect(activities.size).toBeGreaterThan(4);
     expect(said.size).toBeGreaterThan(3);
     expect(meetingTicks).toBeGreaterThan(0);
+    expect(partiesPaid).toBeGreaterThan(0);
+    expect(activities).toContain('party');
     for (const kind of ['coffee', 'toilet', 'chat']) expect(activities, kind).toContain(kind); // breaks and chit-chat
     expect([...teamworkKinds].sort()).toEqual(['briefing', 'handoff']);
     expect(teamworkSpeech).toBe(0); // verified interactions show a pose and an icon, never text

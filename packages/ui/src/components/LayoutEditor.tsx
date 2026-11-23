@@ -51,6 +51,7 @@ export const TOOL_GROUPS: Array<{ label: string; tools: Array<[EditTool, string]
       ['server', 'Server rack'],
       ['console', 'Console'],
       ['snack', 'Snacks'],
+      ['arcade', 'Arcade'],
       ['reception', 'Reception'],
       ['noticeboard', 'Noticeboard'],
     ],

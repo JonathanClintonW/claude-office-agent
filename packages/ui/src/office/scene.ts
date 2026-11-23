@@ -1,6 +1,6 @@
 import 'pixi.js/unsafe-eval'; // CSP-safe (no eval) for VS Code webviews
 import { Application, CanvasSource, Container, Graphics, Rectangle, Sprite, Text, Texture, type FederatedPointerEvent } from 'pixi.js';
-import { STATUS_META, TERMINAL_STATUSES, WALL_ROWS, roomContains, type AgentKind, type AgentStatus, type OfficeLayout, type Room, type RoomKind } from '@agent-office/core';
+import { STATUS_META, TERMINAL_STATUSES, WALL_ROWS, roomContains, workedMs, type AgentKind, type AgentStatus, type OfficeLayout, type Room, type RoomKind } from '@agent-office/core';
 import { assignDesks, assignSlots, key as tileKey, loungeSpots, planRoute, ProgressWatch, roomAt, seatsOf, walkable, type Assignable, type Point, type Seat } from './grid';
 import { cueForStatus, type SfxKind } from '../audio/cues';
 import type { SoundSink } from '../audio/engine';
@@ -11,7 +11,9 @@ import { resolveDirectives, restPhase, type ArbiterActor, type Claim, type Resol
 import { DEFAULT_DIRECTOR_OPTIONS, IdleDirector } from './idleLife';
 import { DEFAULT_MEETING_OPTIONS, MeetingScheduler, type MeetingInfo, type MeetingKind, type MeetingPhase, type SocialTopic } from './meetings';
 import { idleDeskPose, idleStandPose, seatedFrame, spritePose, workPresentation, type WorkInput, type WorkPresentation } from './poses';
+import { DEFAULT_PARTY_OPTIONS, PartyPlanner } from './party';
 import { TeamworkProvider } from './teamwork';
+import { withArcade } from './upgrades';
 import { DEFAULT_VISITOR_OPTIONS, VisitorDirector, type MeetingRequest, type VisitorBody, type VisitorDirective } from './visitors';
 import { buildWorld, chairFacing, destinationTiles, type OfficeWorld } from './world';
 import {
@@ -55,6 +57,7 @@ import {
   W as WEST,
 } from './roomArt';
 import { departmentFor } from '../departments';
+import { coinsEarned, PIZZA_PARTY, type DeskItemId, type Economy, type OfficeUpgrade, type ShopItemId } from '../economy';
 import type { DepartmentRule } from '../settings';
 import {
   BUBBLE_H,
@@ -62,7 +65,17 @@ import {
   drawBoard,
   drawBookshelf,
   drawBubble,
+  ARCADE_FRAMES,
+  drawArcade,
   drawChair,
+  drawCoin,
+  drawCrate,
+  drawCrown,
+  drawPizzaBox,
+  drawDeskLamp,
+  drawDeskPlant,
+  drawPhotoFrame,
+  drawRubberDuck,
   drawCoffeeMachine,
   drawCharacter,
   drawCooler,
@@ -124,6 +137,9 @@ export interface WorkerView {
   lastTestPassAt?: number;
   /** Observed span of the latest cluster of tool calls (lower bound). */
   lastWorkMs?: number;
+  /** Observed working time until lastEventAt (reducer `workMs`); earns office coins. */
+  workMs?: number;
+  lastEventAt?: number;
 }
 
 export interface SceneCallbacks {
@@ -208,6 +224,8 @@ interface Guest extends Walker {
 
 interface Worker {
   view: WorkerView;
+  /** Top-earner crown (created on first use). */
+  crown?: Sprite;
   look: Look;
   lookKey: string;
   pos: { x: number; y: number };
@@ -274,6 +292,14 @@ interface Desk {
   shownKind?: ScreenKind;
   shownFrame: number;
   shownLamp?: string;
+  /** World px: left edge of the desk tile and its floor line. */
+  x: number;
+  bottom: number;
+  chair: Sprite;
+  /** Desk upgrades bought with office coins, shown while their owner sits here. */
+  upgradeSig?: string;
+  upgrades?: Sprite[];
+  lampLight?: Sprite;
 }
 
 /** A prop whose texture follows the state of a spot (restroom door sign, coffee machine). */
@@ -339,6 +365,15 @@ const TYPING_SCREENS = new Set<ScreenKind>(['code', 'edit', 'terminal']);
 /** A failure is presented as "debugging" for this long unless something succeeded since. */
 const RECENT_FAILURE_MS = 10 * 60_000;
 const FLIGHT_MS = 1400;
+const COIN_POP_MS = 1600;
+const NO_ITEMS: readonly DeskItemId[] = [];
+/** Desk upgrade art: drawing, x offset from the desk's left edge, y offset from its floor line. */
+const DESK_ITEM_ART: Record<Exclude<DeskItemId, 'chair'>, [() => HTMLCanvasElement, number, number]> = {
+  plant: [drawDeskPlant, 13, -9],
+  duck: [drawRubberDuck, 11, -27],
+  lamp: [drawDeskLamp, 3, -9],
+  photo: [drawPhotoFrame, 5, -27],
+};
 const MAX_FLIGHTS = 24;
 const SPEECH_FONT_SIZE = 11;
 const SPEECH_MAX_W = 150;
@@ -411,8 +446,27 @@ export class OfficeScene {
   private lastClockDraw = -1;
   private hourOverride: number | null = null;
   /** Idle life uses the scene's hour (so a lighting override also drives time-of-day lines). */
-  private director = new IdleDirector(Math.random, { ...DEFAULT_DIRECTOR_OPTIONS, hourOf: () => this.hour() });
-  private meetings = new MeetingScheduler(Math.random, { ...DEFAULT_MEETING_OPTIONS, hourOf: () => this.hour() });
+  private director = new IdleDirector(Math.random, {
+    ...DEFAULT_DIRECTOR_OPTIONS,
+    hourOf: () => this.hour(),
+    priceOf: (kind) => (this.economy && (kind === 'coffee' || kind === 'snack') ? this.economy.price(kind) : undefined),
+    onPaid: (key, kind, now) => this.pay(key, kind as ShopItemId, now),
+  });
+  private meetings = new MeetingScheduler(Math.random, {
+    ...DEFAULT_MEETING_OPTIONS,
+    hourOf: () => this.hour(),
+    roomBusy: (id) => this.party.currentParties().some((p) => p.roomId === id),
+  });
+  /** Team pizza parties, paid from the members' office coins. */
+  // Parties may cross the whole office: allow a longer walk than meetings do.
+  private party = new PartyPlanner(Math.random, {
+    ...DEFAULT_PARTY_OPTIONS,
+    price: PIZZA_PARTY.price,
+    minMembers: PIZZA_PARTY.minMembers,
+    arrivalTimeout: 45_000,
+    // A meeting still gathering has no one in its room yet: keep parties out of it too.
+    roomBusy: (id) => this.meetings.currentMeetings().some((m) => m.roomId === id),
+  });
   /** Short animations of verified real collaboration events (spawn briefings, task handoffs). */
   private teamwork = new TeamworkProvider();
   /**
@@ -421,7 +475,7 @@ export class OfficeScene {
    * verified-event interactions first, then simulated meetings and gatherings (so a gathering
    * is not undone by a coffee break), then idle life.
    */
-  private behaviors: BehaviorProvider[] = [this.teamwork, this.meetings, this.director];
+  private behaviors: BehaviorProvider[] = [this.teamwork, this.party, this.meetings, this.director];
   /**
    * Simulated visitors (not agents) so the office has some life even without idle agents.
    * They run after the agents' providers and keep off every tile an agent uses or wants.
@@ -431,6 +485,17 @@ export class OfficeScene {
   private visitorsWanted = true;
   /** Office sounds (music lives in the engine; the scene only sends cues and the activity level). */
   private sound: SoundSink | null = null;
+  /** Office coins ledger; null while the coin game is off. */
+  private economy: Economy | null = null;
+  private lastShop = 0;
+  /** Shared upgrades the office fund bought (coin game). */
+  private arcadeOn = false;
+  private espressoOn = false;
+  /** The layout as given; `layout` may add a virtual arcade (never saved). */
+  private baseLayout?: OfficeLayout;
+  private topEarnerKey?: string;
+  private pizzas = new Map<string, Sprite>();
+  private coinPops: Array<{ node: Container; wx: number; wy: number; start: number }> = [];
   /** Spots in use at the previous behavior tick (coffee starts, restroom ends). */
   private spotBusyBefore = new Set<string>();
   private active = true;
@@ -536,6 +601,16 @@ export class OfficeScene {
   // --- public API
 
   setLayout(layout: OfficeLayout): void {
+    this.baseLayout = layout;
+    this.applyLayout(this.effectiveLayout(layout));
+  }
+
+  /** The office fund's arcade is placed on a free break-room tile in the view only (not while editing). */
+  private effectiveLayout(layout: OfficeLayout): OfficeLayout {
+    return this.arcadeOn && !this.editMode ? withArcade(layout) : layout;
+  }
+
+  private applyLayout(layout: OfficeLayout): void {
     if (this.layout && JSON.stringify(this.layout) === JSON.stringify(layout)) return;
     const resized = !this.layout || this.layout.cols !== layout.cols || this.layout.rows !== layout.rows;
     this.layout = layout;
@@ -619,6 +694,7 @@ export class OfficeScene {
 
   setEditMode(on: boolean): void {
     this.editMode = on;
+    if (this.baseLayout) this.applyLayout(this.effectiveLayout(this.baseLayout));
     this.updateBehaviorsEnabled();
     this.drawEditGrid();
     for (const w of this.workers.values()) w.node.eventMode = on ? 'none' : 'static';
@@ -689,7 +765,30 @@ export class OfficeScene {
     const w = buildWorld(layout, this.windowXs(), this.sky === 'night');
     const lounge = this.loungeKeys;
     const chatTiles = lounge.size ? w.chatTiles.filter((t) => !lounge.has(tileKey(t)) && !lounge.has(tileKey({ x: t.x + 1, y: t.y }))) : w.chatTiles;
-    return { ...w, chatTiles, isWalkable: (p) => this.ok(p) };
+    const spots = this.arcadeOn ? w.spots : w.spots.filter((s) => s.kind !== 'arcade');
+    return { ...w, spots, chatTiles, isWalkable: (p) => this.ok(p) };
+  }
+
+  /** Office coins: agents earn them for observed working time and spend them on breaks and desk upgrades. */
+  setEconomy(e: Economy | null): void {
+    this.economy = e;
+    this.party.setFunding(e ? (keys, sessionId, now) => this.payParty(keys, sessionId, now) : null);
+    this.refreshUpgrades();
+    if (e) return;
+    this.topEarnerKey = undefined;
+    for (const p of this.coinPops) p.node.destroy({ children: true });
+    this.coinPops = [];
+  }
+
+  /** Spendable coins of an agent in the office; undefined when the coin game is off or the agent is not here. */
+  /** The office-wide top earner (economy.ts topEarner over the office state); it wears a crown when it is in view. */
+  setTopEarner(agentKey: string | undefined): void {
+    this.topEarnerKey = this.economy ? agentKey : undefined;
+  }
+
+  coinsOf(agentKey: string, now = Date.now()): number | undefined {
+    const w = this.workers.get(agentKey);
+    return w ? this.balanceOf(w, now) : undefined;
   }
 
   /** Simulated meetings currently gathering or running (always simulated; for display). */
@@ -915,6 +1014,7 @@ export class OfficeScene {
     this.boardBadge?.destroy();
     this.boardBadge = undefined;
     this.desks.clear();
+    this.pizzas.clear();
     this.animated = [];
     this.lamps = [];
     this.windowLights = [];
@@ -1052,10 +1152,11 @@ export class OfficeScene {
           const screen = this.sprite(this.t('screen-off-0-0', () => drawScreen('off', 0)), it.x * TILE + 3, monitorBottom - 13, bottomPx + 2, false);
           this.items.addChild(screen);
           const chairBottom = (seat.seat.y + 1) * TILE;
-          this.items.addChild(this.sprite(this.t('chair', drawChair), cx, chairBottom, chairBottom + 0.5));
+          const chair = this.sprite(this.t('chair', drawChair), cx, chairBottom, chairBottom + 0.5);
+          this.items.addChild(chair);
           const glowSprite = this.light(cx, monitorBottom - 6, 0xffffff, 0.75);
           glowSprite.visible = false;
-          const desk: Desk = { seat, screen, glow: glowSprite, variant, shownKind: 'off', shownFrame: 0 };
+          const desk: Desk = { seat, screen, glow: glowSprite, variant, shownKind: 'off', shownFrame: 0, x: it.x * TILE, bottom: bottomPx, chair };
           // Department dressing (decoration; the main screen always shows the real status).
           if (seat.roomKind === 'qa') {
             desk.lamp = this.sprite(this.t('qa-off-true', () => drawQaLamp('off', true)), it.x * TILE + 13, monitorBottom - 12, bottomPx + 3);
@@ -1111,9 +1212,23 @@ export class OfficeScene {
         }
         case 'coffee': {
           shadow(7, 2);
-          const s = this.sprite(this.t('coffee-idle', () => drawCoffeeMachine(0, false)), cx, bottomPx, bottomPx);
+          const e = this.espressoOn;
+          const s = this.sprite(this.t(`coffee-idle${e ? '-e' : ''}`, () => drawCoffeeMachine(0, false, e)), cx, bottomPx, bottomPx);
           this.items.addChild(s);
           this.coffees.push({ id: it.id, sprite: s, shown: -1 });
+          break;
+        }
+        case 'arcade': {
+          shadow(7, 2);
+          // A user-placed arcade stays a crate until the office fund unlocks the arcade.
+          if (!this.arcadeOn) {
+            this.items.addChild(this.sprite(this.t('crate', drawCrate), cx, bottomPx, bottomPx));
+            break;
+          }
+          const s = this.sprite(this.t('arcade0', () => drawArcade(0)), cx, bottomPx, bottomPx);
+          this.items.addChild(s);
+          anim(s, 'arcade', ARCADE_FRAMES, 260, drawArcade);
+          glow(cx, bottomPx - 20, 0x8fb8ff, 0.7, 0.55);
           break;
         }
         case 'server': {
@@ -1515,7 +1630,7 @@ export class OfficeScene {
         home: w.home,
         pos: { x: Math.round(w.pos.x), y: Math.round(w.pos.y) },
         moving: w.path.length > 0,
-        ctx: this.actorContext(w),
+        ctx: this.actorContext(w, now),
       });
       const a: ArbiterActor = { key: w.view.key, idle, status: w.view.status, home: w.home };
       if (w.target) a.target = w.target;
@@ -1550,6 +1665,11 @@ export class OfficeScene {
     // Simulated sounds: the coffee machine starts brewing; someone leaves the restroom.
     for (const p of this.coffees) if (this.spotBusy.has(p.id) && !this.spotBusyBefore.has(p.id)) this.cue('coffee', p.sprite.x);
     for (const p of this.toilets) if (!this.spotBusy.has(p.id) && this.spotBusyBefore.has(p.id)) this.cue('flush', p.sprite.x);
+    this.showPizzas();
+    if (this.economy && now - this.lastShop >= 1000) {
+      this.lastShop = now;
+      this.shopForDesks(now);
+    }
   }
 
   /**
@@ -1754,7 +1874,7 @@ export class OfficeScene {
   }
 
   /** Real, observed context for providers (no inference: only fields the scene already has). */
-  private actorContext(w: Worker): DialogueFacts {
+  private actorContext(w: Worker, now: number): DialogueFacts {
     const v = w.view;
     const ctx: DialogueFacts = { kind: v.kind, sessionId: v.sessionId, status: v.status };
     if (v.parentKey) ctx.parentKey = v.parentKey;
@@ -1765,7 +1885,187 @@ export class OfficeScene {
     if (finishedAt !== undefined) ctx.finishedAt = finishedAt;
     const homeRoomId = w.deskId ? this.seatById.get(w.deskId)?.roomId : undefined;
     if (homeRoomId) ctx.homeRoomId = homeRoomId;
+    const coins = this.balanceOf(w, now);
+    if (coins !== undefined) ctx.coins = coins;
     return ctx;
+  }
+
+  private earnedOf(w: Worker, now: number): number {
+    const v = w.view;
+    return coinsEarned(workedMs({ workMs: v.workMs, status: v.status, lastEventAt: v.lastEventAt ?? now, toolRunning: v.toolRunning }, now));
+  }
+
+  private balanceOf(w: Worker, now: number): number | undefined {
+    return this.economy ? this.economy.balance(w.view.key, this.earnedOf(w, now)) : undefined;
+  }
+
+  /** A priced idle-life break (coffee, vending machine) reached its spot. */
+  private pay(key: string, item: ShopItemId, now: number): void {
+    const w = this.workers.get(key);
+    if (!w || !this.economy) return;
+    const p = this.economy.buy(key, item, this.earnedOf(w, now), now);
+    if (p) this.coinPop(w, `-${p.price}`);
+  }
+
+  /** Idle agents sitting at their desk spend savings on the next desk upgrade, keeping some for breaks. */
+  private shopForDesks(now: number): void {
+    const e = this.economy!;
+    const here: string[] = [];
+    for (const w of this.workers.values()) {
+      if (w.leaving) continue;
+      here.push(w.view.key);
+      if (w.view.status !== 'idle' || w.phase !== 'seated' || w.perform || w.path.length || !w.deskId) continue;
+      const earned = this.earnedOf(w, now);
+      const next = e.nextDeskItem(w.view.key, earned);
+      if (next && e.buy(w.view.key, next.id, earned, now)) this.coinPop(w, `-${next.price} ${next.name}`);
+    }
+    e.seen(here, now);
+    const bought = e.buyOfficeUpgrade(now);
+    this.refreshUpgrades();
+    if (bought) this.announceUpgrade(bought);
+  }
+
+  /** Follow the office fund's shared upgrades (bought, or cleared by a reset). */
+  private refreshUpgrades(): void {
+    const arcade = Boolean(this.economy?.hasUpgrade('arcade'));
+    const espresso = Boolean(this.economy?.hasUpgrade('espresso'));
+    if (espresso !== this.espressoOn) {
+      this.espressoOn = espresso;
+      for (const c of this.coffees) c.shown = -2;
+    }
+    if (arcade !== this.arcadeOn) {
+      this.arcadeOn = arcade;
+      if (this.baseLayout) {
+        const next = this.effectiveLayout(this.baseLayout);
+        // Same layout (an arcade the user placed): only its crate/cabinet art and the spot change.
+        if (this.layout && JSON.stringify(this.layout) === JSON.stringify(next)) {
+          if (this.ready) this.buildRoom();
+        } else this.applyLayout(next);
+      }
+    }
+  }
+
+  private announceUpgrade(u: OfficeUpgrade): void {
+    const kind = u.id === 'arcade' ? 'arcade' : 'coffee';
+    const it = this.layout?.items.find((i) => i.type === kind);
+    if (it) this.coinPopAt(it.x * TILE + TILE / 2, it.y * TILE - 8, `-${u.price} ${u.name}`);
+  }
+
+  /** A team pizza party: split the price over the members' wallets (see Economy.payParty). */
+  private payParty(keys: string[], sessionId: string, now: number): boolean {
+    const e = this.economy;
+    if (!e) return false;
+    const members = keys.flatMap((k) => {
+      const w = this.workers.get(k);
+      return w ? [{ key: k, earned: this.earnedOf(w, now) }] : [];
+    });
+    if (!e.payParty(members, sessionId, now)) return false;
+    // Members whose share was 0 log nothing: only this party's entries (same `at`) get a pop.
+    for (const p of e.recent(members.length)) if (p.item === 'pizza' && p.at === now) {
+      const w = this.workers.get(p.agentKey);
+      if (w) this.coinPop(w, `-${p.price} pizza`);
+    }
+    return true;
+  }
+
+  /** The table tile in the room nearest to p (the seats' centre can fall on a chair); p itself if there is none. */
+  private tableNear(p: Point, roomId: string): Point {
+    const room = this.rooms.find((r) => r.id === roomId);
+    let best: Point | undefined;
+    let bestD = Infinity;
+    for (const it of this.layout?.items ?? []) {
+      if (it.type !== 'table' || (room && !roomContains(room, it))) continue;
+      const d = Math.abs(it.x - p.x) + Math.abs(it.y - p.y);
+      if (d < bestD) {
+        bestD = d;
+        best = { x: it.x, y: it.y };
+      }
+    }
+    return best ?? p;
+  }
+
+  /** Pizza boxes on the tables of parties that are eating. */
+  private showPizzas(): void {
+    const live = new Set<string>();
+    for (const p of this.party.currentParties()) {
+      if (p.phase === 'gathering') continue;
+      live.add(p.id);
+      if (this.pizzas.has(p.id)) continue;
+      const at = this.tableNear(p.table, p.roomId);
+      const bottom = (at.y + 1) * TILE;
+      const s = this.sprite(this.t('pizza', drawPizzaBox), at.x * TILE + TILE / 2, bottom - 5, bottom - 1.9);
+      this.items.addChild(s);
+      this.pizzas.set(p.id, s);
+    }
+    for (const [id, s] of this.pizzas) {
+      if (live.has(id)) continue;
+      s.destroy();
+      this.pizzas.delete(id);
+    }
+  }
+
+  private coinPop(w: Worker, text: string): void {
+    this.coinPopAt(w.pos.x * TILE + TILE / 2, (w.pos.y + 1) * TILE - CHAR_H - 6, text);
+  }
+
+  private coinPopAt(wx: number, wy: number, text: string): void {
+    this.cue('coin', wx);
+    if (!this.ready) return;
+    const node = new Container();
+    node.eventMode = 'none';
+    const coin = new Sprite(this.t('coin', drawCoin));
+    coin.anchor.set(1, 0.5);
+    coin.scale.set(2);
+    const label = new Text({ text, style: { fontFamily: LABEL_FONT, fontSize: 12, fill: '#ffd84a', stroke: { color: '#1a1424', width: 3 } }, resolution: 2 });
+    label.anchor.set(0, 0.5);
+    label.position.set(3, 0);
+    node.addChild(coin, label);
+    node.zIndex = 4;
+    this.overlay.addChild(node);
+    this.coinPops.push({ node, wx, wy, start: performance.now() });
+    if (this.coinPops.length > 30) this.coinPops.shift()!.node.destroy({ children: true });
+  }
+
+  private drawCoinPops(): void {
+    if (!this.coinPops.length) return;
+    const t = performance.now();
+    const zoom = this.cam.zoom;
+    const { x: ox, y: oy } = this.root.position;
+    for (let i = this.coinPops.length - 1; i >= 0; i--) {
+      const p = this.coinPops[i]!;
+      const k = (t - p.start) / COIN_POP_MS;
+      if (k >= 1) {
+        p.node.destroy({ children: true });
+        this.coinPops.splice(i, 1);
+        continue;
+      }
+      const rise = this.reduceMotion ? 0 : k * 10;
+      p.node.position.set(Math.round(ox + p.wx * zoom), Math.round(oy + (p.wy - rise) * zoom));
+      p.node.alpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+    }
+  }
+
+  /** Desk upgrades of the agent sitting at this desk (sprites rebuilt only when the set changes). */
+  private showDeskUpgrades(d: Desk, w: Worker | undefined, dark: number): void {
+    const owned = w && this.economy ? this.economy.items(w.view.key) : NO_ITEMS;
+    const sig = owned.join(',');
+    if (sig !== (d.upgradeSig ?? '')) {
+      d.upgradeSig = sig;
+      for (const s of d.upgrades ?? []) s.destroy();
+      d.upgrades = [];
+      d.lampLight?.destroy();
+      d.lampLight = undefined;
+      for (const id of owned) {
+        if (id === 'chair') continue;
+        const [make, dx, dy] = DESK_ITEM_ART[id];
+        const s = this.sprite(this.t(`item-${id}`, make), d.x + dx, d.bottom + dy, d.bottom + 3);
+        this.items.addChild(s);
+        d.upgrades.push(s);
+      }
+      if (owned.includes('lamp')) d.lampLight = this.light(d.x + 3, d.bottom - 15, 0xffd28a, 0.45);
+      d.chair.tint = owned.includes('chair') ? 0xffd54a : 0xffffff;
+    }
+    if (d.lampLight) d.lampLight.alpha = dark * 0.9;
   }
 
   private applyDirective(w: Worker, d: Resolved | undefined): void {
@@ -2152,6 +2452,18 @@ export class OfficeScene {
       w.node.position.set(px, py);
       w.node.zIndex = seated ? py - 1 : onCouch ? (w.pos.y + 1) * TILE + 1 : py;
       w.node.visible = !hidden;
+      const crowned = this.topEarnerKey === w.view.key;
+      if (crowned && !w.crown) {
+        w.crown = new Sprite(this.t('crown', drawCrown));
+        w.crown.eventMode = 'none';
+        w.crown.anchor.set(0.5, 1);
+        w.node.addChild(w.crown);
+      }
+      if (w.crown) {
+        w.crown.visible = crowned;
+        const headDy = pose.includes('slump') ? 2 : pose === 'type1' || pose === 'read' || pose === 'sit_lean' ? 1 : 0;
+        if (crowned) w.crown.y = -CHAR_H + 3 + headDy;
+      }
       const isSel = this.selected === w.view.key;
       if (w.shadowSeated !== seated) {
         w.shadowSeated = seated;
@@ -2183,7 +2495,9 @@ export class OfficeScene {
       w.label.visible = showLabel;
       if (showLabel) {
         const name = w.view.simulated ? `SIM ${w.view.name}` : w.view.name;
-        const text = isSel || w.hovered ? name : name.length > 14 ? name.slice(0, 13) + '…' : name;
+        const short = isSel || w.hovered ? name : name.length > 14 ? name.slice(0, 13) + '…' : name;
+        const coins = (isSel || w.hovered) && this.economy ? this.balanceOf(w, now) : undefined;
+        const text = coins === undefined ? short : `${short}\n${coins.toLocaleString()} coins`;
         if (w.label.text !== text) w.label.text = text;
         const fill = isSel ? '#ffe066' : attention ? '#ffd6a0' : '#ffffff';
         if (fill !== w.labelFill) {
@@ -2202,6 +2516,7 @@ export class OfficeScene {
       this.showSpeech(w.speech, line, onScreen && !hidden, px, headY - (bubble ? BUBBLE_H + 1 : 1), showLabel ? w.label.height + 2 : 2);
     }
     this.drawGuests(now, dt);
+    this.drawCoinPops();
 
     // monitors, their light and the QA build lamps (textures swapped only on change)
     for (const [deskId, d] of this.desks) {
@@ -2238,6 +2553,7 @@ export class OfficeScene {
           d.lamp.texture = this.t(`qa-${state}-${lit}`, () => drawQaLamp(state, lit));
         }
       }
+      this.showDeskUpgrades(d, w, dark);
     }
 
     for (const tl of this.toilets) {
@@ -2253,7 +2569,8 @@ export class OfficeScene {
       const shown = busy ? f : -1;
       if (shown !== cm.shown) {
         cm.shown = shown;
-        cm.sprite.texture = this.t(busy ? `coffee-busy${f}` : 'coffee-idle', () => drawCoffeeMachine(f, busy));
+        const e = this.espressoOn;
+        cm.sprite.texture = this.t(`${busy ? `coffee-busy${f}` : 'coffee-idle'}${e ? '-e' : ''}`, () => drawCoffeeMachine(f, busy, e));
       }
     }
 
@@ -2393,6 +2710,7 @@ export class OfficeScene {
     activity?: string;
     speech?: string;
     meeting?: string;
+    coins?: number;
   }> {
     return [...this.workers.values()].map((w) => {
       const out: ReturnType<OfficeScene['debugSnapshot']>[number] = {
@@ -2408,6 +2726,8 @@ export class OfficeScene {
       if (w.perform?.speech) out.speech = w.perform.speech;
       const m = this.meetings.meetingOf(w.view.key);
       if (m) out.meeting = m.id;
+      const coins = this.balanceOf(w, Date.now());
+      if (coins !== undefined) out.coins = coins;
       return out;
     });
   }

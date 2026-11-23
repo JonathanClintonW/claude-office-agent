@@ -83,10 +83,15 @@ such spot, the activity is skipped.
 | `walk` | a free chat tile 3–12 tiles away | 1.5–3 s | Walks there, looks around, walks back |
 | `stroll` | the doorway of another department's room, at least 4 tiles away (never a restroom or the corridor) | 3–5 s | Walks to the doorway and looks into the room |
 | `lounge` | a free lounge chair (a chair that is not at a table) | 12–25 s | Sits in the chair, now and then with a music icon |
+| `arcade` | `arcade` spot: an arcade cabinet, which the office fund unlocks | 12–20 s | Plays facing the cabinet, now and then with a laugh (a win) or idea icon. Free, no speech lines |
 
 Weights (relative chance among the activities that are possible right now): chat 5, coffee 2,
-water 2, couch 2, snack 1.5, books 1.5, toilet 1.5, walk 1.5, stroll 1.5, lounge 1.5, window 1,
-board 1, whiteboard 1, plant 1, stretch 1.
+water 2, couch 2, arcade 2, snack 1.5, books 1.5, toilet 1.5, walk 1.5, stroll 1.5, lounge 1.5,
+window 1, board 1, whiteboard 1, plant 1, stretch 1.
+
+**Office coins.** With office coins on, coffee (30) and snacks (20) cost coins: an agent only picks
+them when it can afford them and pays on arrival at the machine (`priceOf` / `onPaid` options).
+Water and everything else stay free. See [GAMIFICATION.md](GAMIFICATION.md).
 
 **Frequency.** `setFrequency(m)` uses the **Idle frequency** setting: low 0.5, normal 1,
 high 2. It divides the first delay (12–40 s after becoming idle) and the pause between trips

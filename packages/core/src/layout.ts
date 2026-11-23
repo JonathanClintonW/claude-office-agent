@@ -22,6 +22,8 @@ export const FURNITURE_TYPES = [
   'reception',
   'noticeboard',
   'console',
+  // Shared office upgrade: the UI shows a crate until the office fund unlocks it.
+  'arcade',
 ] as const;
 export type FurnitureType = (typeof FURNITURE_TYPES)[number];
 

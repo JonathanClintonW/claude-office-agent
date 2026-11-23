@@ -536,6 +536,7 @@ function ReplayPlayer({ timeline, layout }: { timeline: ReplayTimeline; layout: 
           onTileClick={() => {}}
           onItemMove={() => {}}
           debugHandle={false}
+          economy={false}
           collabState={state}
           collabNow={player.position}
           hourOverride={new Date(player.position).getHours()}

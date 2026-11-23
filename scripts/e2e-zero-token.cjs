@@ -42,7 +42,7 @@ const MAX_IDLE_CPU = num('E2E_MAX_IDLE_CPU', 0.85);
 const MAX_HEAP_GROWTH_MB = num('E2E_MAX_HEAP_GROWTH_MB', 64);
 const HIDDEN_SECONDS = num('E2E_HIDDEN_SECONDS', 15);
 const FPS_EXPERIMENT_SECONDS = num('E2E_FPS_EXPERIMENT_SECONDS', 0);
-const TABS = ['Office', 'Tasks', 'Errors', 'Git', 'Analytics', 'History', 'Team', 'Settings'];
+const TABS = ['Office', 'Tasks', 'Errors', 'Git', 'Analytics', 'History', 'Team', 'Shop', 'Settings'];
 /** Hosts through which model inference is reachable (Anthropic, Claude apps, Bedrock, Vertex, Foundry, OpenAI). */
 const INFERENCE_HOST = /(^|\.)(anthropic\.com|claude\.ai|claude\.com|openai\.com)$|bedrock|aiplatform\.googleapis\.com|vertex|claude|anthropic|services\.ai\.azure\.com/i;
 const NETWORK_PROTOCOLS = new Set(['http:', 'https:', 'ws:', 'wss:', 'ftp:']);
