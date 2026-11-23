@@ -149,7 +149,19 @@ describe('layout model: walls and rooms validation', () => {
     const items = types.map((type, i) => ({ id: `n${i}`, type, x: i % 12, y: 6 + Math.floor(i / 12) }));
     const r = validateLayout({ ...b, rows: 9, items: [...b.items, ...items] });
     expect(r.ok).toBe(true);
-    for (const t of ['server', 'whiteboard', 'screen', 'table', 'chair', 'snack', 'reception', 'noticeboard', 'console']) expect(FURNITURE_TYPES).toContain(t);
+    for (const t of ['server', 'whiteboard', 'screen', 'table', 'chair', 'snack', 'reception', 'noticeboard', 'console', 'arcade']) expect(FURNITURE_TYPES).toContain(t);
+  });
+
+  it('accepts an arcade cabinet as a normal blocking floor item, never on the wall row', () => {
+    const b = base();
+    const arcade = { id: 'arcade-1', type: 'arcade' as const, x: 8, y: 4 };
+    const r = validateLayout({ ...b, items: [...b.items, arcade] });
+    expect(r.ok && r.layout.items.find((i) => i.id === 'arcade-1')).toEqual(arcade);
+    expect(blockedTiles({ items: [arcade], walls: [] }).has('8,4')).toBe(true);
+    expect(validateLayout({ ...b, items: [...b.items, { ...arcade, y: 1 }] }).ok).toBe(false);
+    // its tile is taken like any other furniture
+    expect(validateLayout({ ...b, items: [...b.items, { ...arcade, x: 2, y: 3 }] })).toMatchObject({ ok: false, error: 'item arcade-1 overlaps another item' });
+    expect(defaultLayout().items.some((i) => i.type === 'arcade')).toBe(false);
   });
 });
 

@@ -28,6 +28,7 @@ It only watches. It never sends prompts, never answers permission requests and n
 - [Subagents and agent teams](#subagents-and-agent-teams)
 - [Meetings and collaboration](#meetings-and-collaboration)
 - [Simulated office life](#simulated-office-life)
+- [Office coins](#office-coins)
 - [Sound](#sound)
 - [Token usage](#token-usage)
 - [Dashboard views](#dashboard-views)
@@ -48,7 +49,8 @@ It only watches. It never sends prompts, never answers permission requests and n
 | **Departments** | A 44 × 30 office with Development, QA & Testing, Research, DevOps and Security rooms, plus meeting, collaboration, huddle and break rooms, a reception and restrooms. Local rules you can edit decide who sits where. |
 | **Subagents and teams** | Subagents (including nested ones) and teammates get a desk in their department or next to their lead. Verified delegations, task handoffs and completions are animated between desks. |
 | **Inspector** | Click a worker for its current tool, pending permission, tool history, tasks, timing, recent errors, git status and the context size recorded in its transcript. |
-| **Dashboard** | Tasks, Errors, Git, Analytics, History (with replay), Team and Settings views. |
+| **Dashboard** | Tasks, Errors, Git, Analytics, History (with replay), Team, Shop and Settings views. |
+| **Office coins** | A game layer: agents earn 1 coin per second of real, observed work and spend coins on coffee, snacks and desk upgrades; an office fund buys an espresso machine and an arcade, teams throw pizza parties, and the top earner wears a crown. |
 | **Simulated office life** | Idle agents chat, fetch coffee, read, stretch and meet, and simulated visitors drop by. It is cosmetic, clearly labelled, and real status always wins. |
 | **Sound** | Optional calm lo-fi music and sound effects for real events (an agent arrives, finishes, needs permission, fails), all synthesized in the page with no audio files. Off by default. |
 | **VS Code extension** | The same office in a VS Code panel, a status-bar summary, notifications and hook install commands. |
@@ -222,6 +224,35 @@ Agents whose **real** status is idle get a small, local, simulated life: coffee,
 </tr>
 </table>
 
+## Office coins
+
+An optional game layer (**Settings → Office coins**). Every agent earns **1 coin per second it is really working**: the time comes from observed Claude Code events, waiting and idle time do not count, and quiet gaps are capped so a stuck session cannot farm coins. Idle agents spend their coins in the simulation:
+
+- **Breaks:** coffee (30) and vending-machine snacks (20) are paid on arrival at the machine; water is free, and agents who cannot afford a treat pick a free break.
+- **Desk upgrades:** with enough savings, an idle agent at its desk buys the next upgrade (desk plant, rubber duck, desk lamp, photo frame, golden chair), and it appears on the desk.
+- **Office fund:** everything agents spend on breaks and desk upgrades goes into a shared fund, and the office buys upgrades by itself: an **espresso machine** (coffee drops to 20) and then an **arcade cabinet** in the break room that idle agents play for free. The arcade is placed in the view only; your saved layout is not changed.
+- **Pizza parties:** when at least 3 agents of one session are idle and their savings reach 240 coins, the team orders pizza and eats together in the break room (or a meeting or collaboration room), at most every 20 minutes per team.
+- **Top earner:** the agent that earned the most wears a crown.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/screenshots/coins-purchase.png" alt="An idle simulated agent pays 30 coins for a coffee at the break-room machine"><br><sub>Paying for a break: the coin pop-up shows the price.</sub></td>
+<td width="50%"><img src="docs/assets/screenshots/pizza-party.gif" alt="Animation: a team of simulated agents eating pizza together at the break-room table"><br><sub>A team pizza party in the break room.*</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/screenshots/desk-upgrades.png" alt="A desk with a plant, rubber duck, desk lamp and photo frame bought with office coins"><br><sub>Desk upgrades: plant, rubber duck, lamp, photo frame, golden chair.*</sub></td>
+<td><img src="docs/assets/screenshots/arcade.png" alt="The break room with the espresso machine and the arcade cabinet bought by the office fund"><br><sub>The espresso machine and arcade cabinet the office fund bought.*</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/screenshots/top-earner.png" alt="The top earner wears a gold crown; its label shows its coin balance"><br><sub>The top earner wears a crown; the selected agent shows its balance.</sub></td>
+<td><img src="docs/assets/screenshots/inspector-coins.png" alt="Inspector section with an agent's balance, earnings, spending and savings goal"><br><sub>Inspector: coins earned for observed work, spending and the next goal.</sub></td>
+</tr>
+</table>
+
+<sub>Captured from the real app with demo data. * The short demo scenario cannot earn this much, so for these captures the office fund was pre-filled, the desk upgrades were bought with added coins and the party price was lowered; everything you see is drawn by the app itself.</sub>
+
+You see coins in the inspector's **Office coins** section, under the selected agent's name, as a pop-up on every purchase, and in the **Shop** tab (wallets, price list, recent purchases). Coins are not money and not tokens; earnings come from the shared office state, purchases are simulated and stored only in this browser or webview. See [docs/GAMIFICATION.md](docs/GAMIFICATION.md).
+
 ## Sound
 
 Turn on **Sound** in the top bar for calm background music and sound effects. Effects follow real events (an agent walks in, finishes a turn, needs permission or an answer, fails) and, more quietly, the office animation (coffee, the restroom, small talk, visitors). A soft keyboard ambience follows the agents that are really typing. Everything is synthesized in the page with the Web Audio API: no audio files, nothing downloaded. Music, effects and volume are under **Settings**. See [docs/SOUND.md](docs/SOUND.md).
@@ -251,7 +282,8 @@ The tabs under the top bar switch between the office and these views (details in
 | **Analytics** | Transcript-observed token usage, Claude Code's own cost records, optional estimates from your price table, and office activity counts. |
 | **History** | Past sessions from the local journal (14 days by default) with metrics and a replay of their events in the office. |
 | **Team** | Lead, subagent and teammate relations with their evidence, task handoffs, parallel work and the simulated meetings in progress. |
-| **Settings** | Animation frame rate, idle-life frequency, room labels, mini-map, reduced motion and department rules (stored in the browser). |
+| **Shop** | Office coins: each agent's observed working time, earnings, spending and desk upgrades, the price list and recent (simulated) purchases. |
+| **Settings** | Animation frame rate, idle-life frequency, room labels, mini-map, reduced motion, office coins and department rules (stored in the browser). |
 
 ## Configuration
 
@@ -300,7 +332,7 @@ The tabs under the top bar switch between the office and these views (details in
 
 ## Screenshot gallery
 
-All images were captured from the running app by [`scripts/capture-screenshots.cjs`](scripts/capture-screenshots.cjs) with the built-in **SIMULATED** demo data, the lighting fixed to 2 pm (`?hour=14`) and the idle-life frequency set to *High*. No agent in them is real.
+All images were captured from the running app by [`scripts/capture-screenshots.cjs`](scripts/capture-screenshots.cjs) with the built-in **SIMULATED** demo data, the lighting fixed to 2 pm (`?hour=14`) and the idle-life frequency set to *High*. No agent in them is real. For the office-coin images the office fund was pre-filled and the party price lowered, because the short demo cannot earn that much.
 
 <table>
 <tr>
@@ -318,6 +350,10 @@ All images were captured from the running app by [`scripts/capture-screenshots.c
 <tr>
 <td><img src="docs/assets/screenshots/analytics-view.png" alt="Analytics view with demo data and no transcripts"><br><sub>Analytics with demo data: there are no transcripts, so token totals stay at zero instead of being estimated.</sub></td>
 <td><img src="docs/assets/screenshots/idle-chat.gif" alt="Animation: two idle simulated agents chatting with template lines"><br><sub>Idle chat with template lines.</sub></td>
+</tr>
+<tr>
+<td><img src="docs/assets/screenshots/shop-coins.png" alt="Shop tab with wallets, the top earner, the office fund and its upgrades"><br><sub>Shop: wallets, the top earner, the office fund and its upgrades.</sub></td>
+<td><img src="docs/assets/screenshots/pizza-party.png" alt="A team of simulated agents at a pizza party in the break room, next to the arcade cabinet"><br><sub>Pizza party next to the arcade the office fund bought.</sub></td>
 </tr>
 </table>
 

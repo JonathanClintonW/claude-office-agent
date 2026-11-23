@@ -444,7 +444,7 @@ async function main() {
   const watchdog = setTimeout(() => {
     log('global timeout, cleaning up');
     cleanup().finally(() => process.exit(1));
-  }, 15 * 60_000);
+  }, 25 * 60_000);
 
   try {
     const port = await freePort();
@@ -859,6 +859,106 @@ async function main() {
         } else skip('history-replay', 'the replay did not load');
       } else skip('history-replay', 'no recorded sessions were listed');
       await tab('Office');
+    }
+
+    // Office coins (game layer). The purchase, the crown and the wallet come from real demo earnings; the office
+    // fund, the desk upgrades and the party price are demo setup (the short scenario cannot earn that much), and the
+    // captions say so.
+    const COIN_SHOTS = ['coins-purchase', 'top-earner', 'inspector-coins', 'desk-upgrades', 'arcade', 'pizza-party', 'shop-coins'];
+    if (COIN_SHOTS.some(wanted)) {
+      await tab('Office');
+      await fit();
+      await waitFor('idle agents with coins', async () => ((await evaluate(() => window.__officeScene.debugSnapshot().filter((w) => w.status === 'idle' && (w.coins ?? 0) >= 20).length)) >= 4 ? true : null), 150_000, 1000);
+      const coffeeAt = layout.items.find((i) => i.type === 'coffee');
+      const popNear = (c) =>
+        evaluate((p) => window.__officeScene.coinPops.some((x) => Math.abs(x.wx / 16 - p.x) < 5 && Math.abs(x.wy / 16 - p.y) < 5), { x: c.x, y: c.y }).then(Boolean);
+
+      if (wanted('coins-purchase') && coffeeAt) {
+        await camera(4, coffeeAt.x + 1, coffeeAt.y + 2);
+        const popped = await waitFor('a coin purchase at the break-room machines', async () => ((await popNear(coffeeAt)) ? true : null), 240_000, 80);
+        if (popped) await shot('coins-purchase', 'An idle agent pays for a break at the break-room machines; the coin pop-up shows the price (simulated purchase with coins earned by demo work)', { element: 'section.office' });
+        else skip('coins-purchase', 'no purchase at the break-room machines within 4 minutes');
+        await fit();
+      }
+
+      const top = await evaluate(() => window.__officeScene.topEarnerKey ?? null);
+      if (top && (wanted('top-earner') || wanted('inspector-coins'))) {
+        const w = await waitFor('the top earner at its desk', async () => (await workers()).find((x) => x.key === top && x.phase === 'seated' && !x.activity) ?? null, 90_000);
+        if (w) {
+          await evaluate((k) => window.__officeScene.cb.onSelect(k), top);
+          await camera(4, w.x, w.y - 1);
+          await shot('top-earner', 'The top earner wears a crown; the selected agent shows its office-coin balance (demo data)', { element: 'section.office' });
+          if (wanted('inspector-coins')) {
+            const wallet = page.locator('dl.wallet').first();
+            if (await wallet.count()) {
+              await page.locator('h3', { hasText: 'Office coins' }).first().scrollIntoViewIfNeeded();
+              await sleep(400);
+              const head = await page.locator('h3', { hasText: 'Office coins' }).first().boundingBox();
+              const body = await wallet.boundingBox();
+              const side = await page.locator('aside.sidebar').first().boundingBox();
+              if (head && body && side) {
+                const clip = { x: Math.round(side.x), y: Math.round(head.y - 6), width: Math.round(side.width), height: Math.round(body.y + body.height - head.y + 58) };
+                await shot('inspector-coins', 'Inspector: the office coins an agent earned for observed work, what it spent and what it is saving for (demo data)', { clip });
+              }
+            } else skip('inspector-coins', 'the wallet section did not render');
+          }
+          await evaluate(() => window.__officeScene.cb.onSelect(null));
+        } else skip('top-earner', 'the top earner never sat at its desk');
+        await fit();
+      }
+
+      // Demo setup from here on.
+      const desk = await evaluate((topKey) => {
+        const s = window.__officeScene;
+        const e = s.economy;
+        if (!e) return null;
+        e.buy('demo-seed', 'chair', 1e9, Date.now()); // fills the office fund: espresso machine and arcade follow
+        const pick = s.debugSnapshot().find((w) => w.phase === 'seated' && w.deskId && w.status === 'idle' && w.key !== topKey);
+        if (pick) for (const id of ['plant', 'duck', 'lamp', 'photo', 'chair']) e.buy(pick.key, id, 1e9, Date.now());
+        s.party.setFunding(() => true);
+        s.party.o = { ...s.party.o, price: 1, checkEveryMs: 1000 };
+        return pick ? pick.key : null;
+      }, top);
+
+      if (desk && wanted('desk-upgrades')) {
+        const w = await waitFor('the upgraded desk with its owner', async () => (await workers()).find((x) => x.key === desk && x.phase === 'seated' && !x.activity) ?? null, 90_000);
+        if (w) {
+          await camera(5, w.x, w.y - 1);
+          await shot('desk-upgrades', 'Desk upgrades bought with office coins: desk plant, rubber duck, lamp, photo frame and golden chair (demo: upgrades bought with added coins)', { element: 'section.office' });
+          await fit();
+        } else skip('desk-upgrades', 'the owner never sat at the upgraded desk');
+      }
+
+      const arcade = await waitFor('the office fund to install the arcade', async () => evaluate(() => {
+        const it = window.__officeScene.layout.items.find((i) => i.type === 'arcade');
+        return it ? { x: it.x, y: it.y } : null;
+      }), 15_000);
+      if (arcade && wanted('arcade')) {
+        await camera(4, arcade.x - 2, arcade.y + 2);
+        const playing = await waitFor('an agent playing the arcade', async () => ((await workers()).some((x) => x.activity === 'arcade' && !x.moving) ? true : null), 120_000);
+        await shot('arcade', `Shared upgrades the office fund bought: the espresso machine and the arcade cabinet${playing ? ', with an idle agent playing' : ''} (demo: office fund pre-filled)`, { element: 'section.office' });
+        await fit();
+      } else if (wanted('arcade')) skip('arcade', 'the arcade was not installed');
+
+      if (wanted('pizza-party')) {
+        const party = await waitFor('a pizza party eating', async () => evaluate(() => {
+          const s = window.__officeScene;
+          const p = s.party.currentParties().find((x) => x.phase === 'eating');
+          return p ? { ...s.tableNear(p.table, p.roomId), room: p.roomName, n: p.members.length } : null;
+        }), 150_000, 500);
+        if (party) {
+          await camera(4, party.x, party.y);
+          await shot('pizza-party', `A team pizza party in the ${party.room}: ${party.n} agents of one session share a pizza (demo: party price lowered)`, { element: 'section.office' });
+          await gif('pizza-party', 'A team pizza party: agents of one session eat and laugh together (demo: party price lowered)', await clipAround(640, 400), 8, 125);
+          await fit();
+        } else skip('pizza-party', 'no party reached the eating phase within 150 s');
+      }
+
+      if (wanted('shop-coins')) {
+        await tab('Shop');
+        await shot('shop-coins', 'Shop tab: wallets with the top earner, the office fund and its upgrades, pizza parties and recent purchases (demo data, fund pre-filled)');
+        await tab('Office');
+      }
     }
 
     if (gifJobs.length) {

@@ -223,6 +223,7 @@ export function replayWorkerViews(state: OfficeState, position: number, wallNow:
     const out: WorkerView = { ...v };
     if (v.turnCompletedAt !== undefined) out.turnCompletedAt = v.turnCompletedAt + offset;
     if (v.terminalAt !== undefined) out.terminalAt = v.terminalAt + offset;
+    if (v.lastEventAt !== undefined) out.lastEventAt = v.lastEventAt + offset;
     if (v.failure) out.failure = { ...v.failure, at: v.failure.at + offset };
     if (v.lastTestPassAt !== undefined) out.lastTestPassAt = v.lastTestPassAt + offset;
     return out;

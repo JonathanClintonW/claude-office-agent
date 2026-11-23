@@ -292,6 +292,10 @@ export class SoundEngine implements SoundSink {
         this.noiseHit(out, t, 1.2, 0.015, 'highpass', 4_000, { attack: 0.2 });
         for (let i = 0; i < 8; i++) this.noiseHit(out, t + 0.1 + this.rand() * 1.1, 0.07, 0.06, 'lowpass', 450 + this.rand() * 200);
         break;
+      case 'coin': // two quick bright notes
+        this.tone(out, 'square', 988, t, 0.07, 0.025, 0.003, 6_000);
+        this.tone(out, 'square', 1319, t + 0.07, 0.22, 0.025, 0.003, 6_000);
+        break;
       case 'flush':
         this.noiseHit(out, t, 1.3, 0.08, 'lowpass', 2_500, { sweepTo: 250, attack: 0.15 });
         break;

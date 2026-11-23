@@ -28,7 +28,7 @@ export type ChatIcon = 'chat_coffee' | 'chat_music' | 'chat_heart' | 'chat_laugh
 /** Semantic poses providers can request; the scene maps them to sprite poses. */
 export type ActorPose = 'stand' | 'couch' | 'drink' | 'talk' | 'read' | 'eat' | 'stretch' | 'sit_meeting' | 'present' | 'wave';
 
-export type SpotKind = 'coffee' | 'water' | 'snack' | 'toilet' | 'couch' | 'window' | 'books' | 'board' | 'whiteboard' | 'plant';
+export type SpotKind = 'coffee' | 'water' | 'snack' | 'toilet' | 'couch' | 'window' | 'books' | 'board' | 'whiteboard' | 'plant' | 'arcade';
 
 export interface Spot {
   id: string;
@@ -84,6 +84,8 @@ export interface ActorContext {
   finishedAt?: number;
   /** Room containing the actor's home desk, if any. */
   homeRoomId?: string;
+  /** Spendable office coins (a game layer earned from observed working time); absent when the coin game is off. */
+  coins?: number;
 }
 
 export interface Actor {

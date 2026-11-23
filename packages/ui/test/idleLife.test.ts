@@ -219,6 +219,7 @@ const RICH: World = {
 /** RICH plus rooms, a lounge chair and a doorway to another room (strolls and lounges). */
 const RICH_ROOMS: World & Partial<Pick<OfficeWorld, 'lounges' | 'doorways'>> = {
   ...RICH,
+  spots: [...RICH.spots, spot('arc', 'arcade', 20, 3)],
   rooms: [
     { id: 'lobby', name: 'Lobby', kind: 'reception', x: 0, y: 0, w: 22, h: 9, seats: [], capacity: 0 },
     { id: 'desks', name: 'Desks', kind: 'development', x: 0, y: 9, w: 22, h: 3, seats: [], capacity: 0 },
@@ -268,7 +269,7 @@ describe('IdleDirector activities', () => {
         if (di.activity === 'stretch') expect(di.at).toEqual(homes.get(k));
       }
     });
-    const all: ActivityKind[] = ['chat', 'coffee', 'water', 'snack', 'toilet', 'couch', 'window', 'books', 'board', 'whiteboard', 'plant', 'stretch', 'walk', 'stroll', 'lounge'];
+    const all: ActivityKind[] = ['chat', 'coffee', 'water', 'snack', 'toilet', 'couch', 'window', 'books', 'board', 'whiteboard', 'plant', 'stretch', 'walk', 'stroll', 'lounge', 'arcade'];
     for (const k of all) expect(poses.has(k), k).toBe(true);
     expect(poses.get('snack')).toContain('eat');
     expect(poses.get('books')).toContain('read');
@@ -581,6 +582,7 @@ const room = (id: string, kind: RoomInfo['kind'], x: number, y: number, w: numbe
 /** A world with every activity: spots and chat tiles in a lobby, a lounge chair, doorways, desks below. */
 const ALL: LifeWorld = {
   ...RICH,
+  spots: [...RICH.spots, spot('arc', 'arcade', 20, 3)],
   rooms: [room('lobby', 'reception', 0, 0, 24, 8), room('wc', 'restroom', 24, 0, 4, 8), room('desks', 'development', 0, 12, 24, 4)],
   lounges: [{ id: 'l1', at: { x: 20, y: 5 }, face: 'down', roomId: 'lobby' }],
   doorways: [
@@ -685,6 +687,39 @@ describe('IdleDirector: real events always win, for every activity and phase', (
     d.setWorld({ ...world, spots: [spot('c', 'coffee', 9, 9), spot('w', 'water', 7, 7)] });
     expect(d.activityOf('a')).toBeUndefined();
     expect(d.tick(t + 200, [a]).get('a')).toEqual({ type: 'home', hurry: false });
+  });
+});
+
+describe('IdleDirector arcade', () => {
+  const ARCADE: World = { ...EMPTY, spots: [spot('arc', 'arcade', 6, 4)] };
+
+  it('plays at the arcade cabinet when there is one: standing, facing it, with laugh or idea icons and no lines', () => {
+    const d = new IdleDirector(seeded(6), { ...FAST, maxAwayShare: 1, soloSpeechChance: 1 });
+    d.setWorld(ARCADE);
+    const actors = crowd(3);
+    const icons = new Set<string>();
+    let played = 0;
+    run(d, actors, 0, 30 * 60_000, (_t, m) => {
+      for (const di of m.values()) {
+        if (di.type !== 'do' || di.activity !== 'arcade') continue;
+        played++;
+        expect(di.at).toEqual({ x: 6, y: 4 });
+        expect(di.face).toBe('up');
+        expect(di.pose).toBe('stand');
+        expect(di.speech).toBeUndefined();
+        if (di.bubble) icons.add(di.bubble);
+      }
+    });
+    expect(played).toBeGreaterThan(50);
+    expect([...icons].sort()).toEqual(['chat_idea', 'chat_laugh']);
+  });
+
+  it('never offers the arcade without an arcade spot', () => {
+    const d = new IdleDirector(seeded(6), { ...FAST, maxAwayShare: 1, activities: ['arcade'] });
+    d.setWorld(COFFEE);
+    run(d, crowd(2), 0, 10 * 60_000, (_t, m) => {
+      for (const di of m.values()) expect(di.type).toBe('home');
+    });
   });
 });
 

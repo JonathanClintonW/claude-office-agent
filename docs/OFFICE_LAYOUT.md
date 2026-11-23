@@ -54,6 +54,7 @@ Strict, because layouts come from the UI and are written to disk by the monitor:
 | `snack` | Vending machine (a `snack` idle spot). |
 | `reception` | Reception counter; adjacent pieces join, the middle piece has a bell. |
 | `noticeboard` | Standing pinboard (a `board` idle spot). |
+| `arcade` | Arcade cabinet (an `arcade` idle spot). It shows as a shipping crate until the office fund unlocks the arcade ([GAMIFICATION.md](GAMIFICATION.md)). Not part of the default office: once unlocked, a layout without an arcade gets one in the office view only, on a free wall tile of a break room (else a collaboration room, else reception) that blocks no seat or path (`placeArcade` in `office/upgrades.ts`). |
 
 ## Default office (44 × 30)
 
@@ -118,7 +119,7 @@ or its type became known), the scene frees its desk and seats it again.
 `buildWorld(layout, windowXs, night)` is pure and only uses tiles reachable from the door:
 
 - **spots:** `coffee`, `water` (cooler), `snack`, `toilet`, `couch`, `window`, `books` (bookshelf),
-  `board` (noticeboard or task board), `whiteboard`, `plant`. Each has an access tile, a face
+  `board` (noticeboard or task board), `whiteboard`, `plant`, `arcade`. Each has an access tile, a face
   towards the furniture and the `roomId` it is in.
 - **chatTiles:** pairs of free tiles, never on desk seats, spots or walls.
 - **rooms:** one `RoomInfo` per layout room. `seats` are meeting chairs next to a table (facing

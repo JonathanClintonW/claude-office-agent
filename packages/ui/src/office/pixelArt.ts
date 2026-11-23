@@ -1114,7 +1114,9 @@ export function drawToilet(occupied: boolean): HTMLCanvasElement {
   return c;
 }
 
-export function drawCoffeeMachine(frame: number, busy: boolean): HTMLCanvasElement {
+/** Coffee machine on a counter; `espresso` draws the upgraded espresso machine (same size and anchor). */
+export function drawCoffeeMachine(frame: number, busy: boolean, espresso = false): HTMLCanvasElement {
+  if (espresso) return drawEspressoMachine(frame, busy);
   const [c, ctx, px] = canvas(TILE, 28);
   px(0, 14, 16, 13, '#8c5f3e'); // counter
   px(0, 14, 16, 2, '#b9875c');
@@ -1131,6 +1133,37 @@ export function drawCoffeeMachine(frame: number, busy: boolean): HTMLCanvasEleme
     const off = frame % 2;
     px(6 + off, 0, 1, 2, '#e8eef5');
     px(9 - off, 1, 1, 2, '#e8eef5');
+  }
+  outline(ctx, TILE, 28);
+  return c;
+}
+
+function drawEspressoMachine(frame: number, busy: boolean): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(TILE, 28);
+  px(0, 14, 16, 13, '#8c5f3e'); // counter (as the plain machine)
+  px(0, 14, 16, 2, '#b9875c');
+  px(2, 18, 12, 1, '#7d5436');
+  px(7, 21, 2, 1, '#c7a17a');
+  px(2, 3, 12, 2, '#c0392b'); // red cup warmer on top
+  px(2, 3, 12, 1, '#e05a49');
+  px(2, 5, 12, 8, '#c9ced8'); // chrome body
+  px(3, 5, 1, 8, '#eef1f6');
+  px(12, 5, 2, 8, '#9aa1ae');
+  px(7, 5, 2, 2, '#f5f5f5'); // pressure gauge
+  px(8, 5, 1, 1, '#3a3f4b');
+  px(11, 7, 1, 1, busy ? '#ff5252' : '#69f0ae');
+  px(3, 8, 1, 4, '#59606e'); // steam wand
+  px(5, 8, 4, 1, '#59606e'); // group head
+  px(5, 9, 4, 1, '#3a3f4b'); // portafilter with its handle
+  px(9, 9, 4, 1, '#1c1f27');
+  px(6, 11, 3, 2, '#f5f5f5'); // espresso cup
+  px(6, 11, 3, 1, '#b07a4a');
+  px(3, 13, 10, 1, '#59606e'); // drip tray
+  if (busy) {
+    const off = frame % 2;
+    px(7, 10, 1, 1, '#6b3f22'); // pouring shot
+    px(5 + off, 0, 1, 2, '#e8eef5');
+    px(10 - off, 1, 1, 2, '#e8eef5');
   }
   outline(ctx, TILE, 28);
   return c;
@@ -1245,5 +1278,196 @@ export function drawSpeechBubble(width: number, height: number): HTMLCanvasEleme
   px(m - 1, h, 1, 1, border);
   px(m + 1, h, 1, 1, border);
   px(m, h + 1, 1, 1, border);
+  return c;
+}
+
+// --- office coins (game layer)
+
+/** A gold office coin (7x7). */
+export function drawCoin(): HTMLCanvasElement {
+  const [c, , px] = canvas(7, 7);
+  const rim = '#b7801a';
+  px(2, 0, 3, 1, rim);
+  px(1, 1, 5, 5, '#f2c230');
+  px(0, 2, 7, 3, '#f2c230');
+  px(2, 6, 3, 1, rim);
+  for (const [x, y] of [
+    [1, 1],
+    [5, 1],
+    [1, 5],
+    [5, 5],
+  ] as const)
+    px(x, y, 1, 1, rim);
+  px(0, 2, 1, 3, rim);
+  px(6, 2, 1, 3, rim);
+  px(2, 2, 1, 2, '#fff4b8');
+  px(3, 2, 1, 3, '#c99a1c');
+  return c;
+}
+
+/** Desk upgrades bought with office coins (bottom-anchored, 1px outline margin). */
+export function drawDeskPlant(): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(7, 9);
+  px(2, 5, 3, 3, '#b5651d');
+  px(2, 5, 3, 1, '#cf7d33');
+  px(3, 1, 1, 4, '#3f9d4a');
+  px(1, 2, 2, 2, '#57b85f');
+  px(4, 1, 2, 2, '#57b85f');
+  px(4, 3, 2, 1, '#3f9d4a');
+  outline(ctx, 7, 9, '#1f3a22');
+  return c;
+}
+
+export function drawRubberDuck(): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(7, 6);
+  px(1, 2, 5, 3, '#ffd83d');
+  px(3, 1, 2, 2, '#ffd83d');
+  px(5, 2, 1, 1, '#ff8a1f');
+  px(4, 1, 1, 1, '#1a1a1a');
+  px(1, 2, 1, 1, '#f2c230');
+  outline(ctx, 7, 6, '#7a5a10');
+  return c;
+}
+
+export function drawDeskLamp(): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(7, 11);
+  px(1, 9, 4, 1, '#3a4050');
+  px(2, 4, 1, 5, '#59606e');
+  px(2, 3, 3, 1, '#59606e');
+  px(3, 1, 3, 3, '#e05d44');
+  px(4, 3, 2, 1, '#fff2a8');
+  outline(ctx, 7, 11, '#1d1f26');
+  return c;
+}
+
+export function drawPhotoFrame(): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(7, 7);
+  px(1, 1, 5, 5, '#8c5f3e');
+  px(2, 2, 3, 3, '#9fd3ff');
+  px(2, 4, 3, 1, '#57b85f');
+  px(4, 2, 1, 1, '#ffe066');
+  outline(ctx, 7, 7, '#3b2618');
+  return c;
+}
+
+// --- shared office upgrades (game layer)
+
+export const ARCADE_FRAMES = 4;
+
+/** Arcade cabinet (16x30, bottom-anchored like the bookshelf): marquee, animated screen, joystick and buttons. */
+export function drawArcade(frame: number): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(TILE, 30);
+  const f = ((frame % ARCADE_FRAMES) + ARCADE_FRAMES) % ARCADE_FRAMES;
+  const body = '#5b3a9e';
+  const side = '#35205e';
+  px(2, 1, 12, 4, side); // marquee
+  px(3, 2, 10, 2, '#ffd166');
+  px(3, 2, 10, 1, '#fff2b0');
+  for (const x of [4, 7, 10]) px(x, 3, 2, 1, '#e0245e');
+  px(2, 5, 12, 9, body); // upper cabinet
+  px(2, 5, 1, 9, '#7a56c4');
+  px(13, 5, 1, 9, side);
+  px(3, 5, 10, 8, '#1c1f27'); // bezel
+  px(4, 6, 8, 6, '#0b1630'); // screen
+  // A tiny invaders game: two rows of aliens sway, the ship moves and fires.
+  px(4, 6, 1 + f, 1, '#ffd166'); // score
+  const sway = f === 1 || f === 2 ? 1 : 0;
+  for (let i = 0; i < 2; i++) {
+    px(5 + sway + i * 4, 7, 2, 1, '#7ee787');
+    px(4 + (1 - sway) + i * 4, 8, 2, 1, '#d2a8ff');
+  }
+  const ship = [5, 6, 8, 7][f]!;
+  px(ship, 11, 3, 1, '#79c0ff');
+  px(ship + 1, 10, 1, 1, '#79c0ff');
+  if (f > 0) px(ship + 1, 10 - f, 1, 1, '#fff2a8');
+  px(1, 14, 14, 1, '#8a68d1'); // control panel
+  px(1, 15, 14, 1, '#6d4bb3');
+  px(1, 16, 14, 1, '#3f2870');
+  px(4, 12, 2, 2, '#e05d44'); // joystick knob
+  px(4, 12, 1, 1, '#ff8a75');
+  px(8, 14, 2, 1, '#5ad1ff'); // buttons
+  px(11, 14, 2, 1, '#ffd166');
+  px(2, 17, 12, 10, body); // lower cabinet
+  px(2, 17, 1, 10, '#7a56c4');
+  px(13, 17, 1, 10, side);
+  px(5, 19, 6, 5, '#2a2c38'); // coin door with lit slots
+  px(7, 20, 2, 1, '#ffb347');
+  px(7, 22, 2, 1, '#ffb347');
+  px(3, 25, 10, 1, '#ff5c8a'); // side-art stripe
+  px(2, 27, 12, 2, '#1c1f27'); // kick plate
+  outline(ctx, TILE, 30);
+  return c;
+}
+
+/** A closed wooden shipping crate (16x26, bottom-anchored): an arcade the office fund has not unlocked yet. */
+export function drawCrate(): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(TILE, 26);
+  const post = '#9a6a3c';
+  px(3, 3, 10, 20, '#c8955a'); // slats
+  for (const y of [3, 8, 13, 18]) px(3, y, 10, 1, '#deb07a');
+  for (const y of [7, 12, 17]) px(3, y, 10, 1, '#7a5230');
+  for (let i = 0; i < 10; i++) px(3 + i, 21 - i * 2, 2, 2, post); // diagonal brace
+  px(1, 1, 2, 24, post); // frame
+  px(13, 1, 2, 24, post);
+  px(1, 1, 14, 2, post);
+  px(1, 23, 14, 2, post);
+  px(1, 1, 14, 1, '#b5824f');
+  for (const [x, y] of [
+    [2, 2],
+    [13, 2],
+    [2, 23],
+    [13, 23],
+  ] as const)
+    px(x, y, 1, 1, '#7d8597'); // nails
+  px(6, 4, 1, 1, '#5a3a22'); // "this side up" arrow
+  px(5, 5, 3, 1, '#5a3a22');
+  px(4, 6, 5, 1, '#5a3a22');
+  px(6, 7, 1, 2, '#5a3a22');
+  px(9, 15, 4, 3, '#f1ece0'); // shipping label
+  px(10, 16, 2, 1, '#8a8f9c');
+  outline(ctx, TILE, 26, '#3b2618');
+  return c;
+}
+
+/** A gold crown (7x5 plus a 1px outline margin) for the top earner's head, bottom-anchored. */
+export function drawCrown(): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(9, 7);
+  const gold = '#f2c230';
+  px(1, 1, 1, 1, gold); // points
+  px(4, 1, 1, 1, '#fff4b8');
+  px(7, 1, 1, 1, gold);
+  px(1, 2, 2, 1, gold);
+  px(4, 2, 1, 1, gold);
+  px(6, 2, 2, 1, gold);
+  px(1, 3, 7, 2, gold); // band
+  px(1, 3, 7, 1, '#ffe27a');
+  px(2, 4, 1, 1, '#e0245e'); // gems
+  px(4, 4, 1, 1, '#5ad1ff');
+  px(6, 4, 1, 1, '#e0245e');
+  px(1, 5, 7, 1, '#c99a1c');
+  outline(ctx, 9, 7, '#6b4a10');
+  return c;
+}
+
+/** An open pizza box with a pizza (12x8 plus a 1px outline margin), bottom-anchored on a table top. */
+export function drawPizzaBox(): HTMLCanvasElement {
+  const [c, ctx, px] = canvas(14, 10);
+  px(1, 1, 12, 3, '#c9a36a'); // open lid at the back
+  px(2, 2, 10, 2, '#e8cf9f');
+  px(5, 2, 4, 1, '#c0392b'); // logo
+  px(1, 4, 12, 5, '#c9a36a'); // box
+  px(2, 4, 10, 4, '#e8d3a8');
+  px(1, 8, 12, 1, '#a8834f');
+  px(4, 4, 6, 1, '#d08a3a'); // crust
+  px(3, 5, 8, 2, '#d08a3a');
+  px(4, 7, 6, 1, '#d08a3a');
+  px(4, 5, 6, 2, '#f6c945'); // cheese
+  px(8, 6, 2, 1, '#e8d3a8'); // a slice already gone
+  px(10, 6, 1, 1, '#e8d3a8');
+  px(5, 5, 1, 1, '#c0392b'); // pepperoni and basil
+  px(8, 5, 1, 1, '#c0392b');
+  px(6, 6, 1, 1, '#c0392b');
+  px(7, 5, 1, 1, '#3f9d4a');
+  outline(ctx, 14, 10, '#5a3d1f');
   return c;
 }

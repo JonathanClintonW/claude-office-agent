@@ -82,6 +82,8 @@ export function toWorkerViews(agents: readonly Agent[]): WorkerView[] {
       if (TERMINAL_STATUSES.has(a.status)) v.terminalAt = a.endedAt ?? a.statusAt;
       if (a.agentType) v.agentType = a.agentType;
       if (a.statusDetail) v.statusDetail = a.statusDetail;
+      if (a.workMs) v.workMs = a.workMs;
+      v.lastEventAt = a.lastEventAt;
       const current = a.currentToolId ? a.tools.find((t) => t.id === a.currentToolId) : undefined;
       v.toolRunning = current?.status === 'running';
       if (current?.status === 'running') {

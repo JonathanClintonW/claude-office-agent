@@ -20,6 +20,7 @@ import { ErrorsView } from './views/ErrorsView';
 import { GitView } from './views/GitView';
 import { HistoryView } from './views/HistoryView';
 import { SettingsView } from './views/SettingsView';
+import { ShopView } from './views/ShopView';
 import { TeamView } from './views/TeamView';
 import type { ViewId, ViewProps } from './views/types';
 
@@ -153,6 +154,8 @@ export function App() {
                   return <HistoryView {...props} />;
                 case 'team':
                   return <TeamView {...props} meetings={office.current?.currentMeetings() ?? []} />;
+                case 'shop':
+                  return <ShopView {...props} />;
                 case 'settings':
                   return <SettingsView {...props} />;
                 default:

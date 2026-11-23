@@ -8,6 +8,7 @@ import type { MeetingInfo } from '../office/meetings';
 import { OfficeScene, type MiniMapState, type RoomMeeting, type RoomOccupant, type SceneCallbacks, type WorkerView } from '../office/scene';
 import type { MeetingRequest } from '../office/visitors';
 import { IDLE_FREQUENCY_MULTIPLIER, useSettings } from '../settings';
+import { economy, officeEarnings, topEarner } from '../economy';
 import { MiniMap } from './MiniMap';
 import '../office.css';
 
@@ -44,6 +45,8 @@ interface Props {
   active?: boolean;
   /** Expose the scene as `window.__officeScene` for tests/diagnostics. Default true. */
   debugHandle?: boolean;
+  /** Office coins (also needs the Settings switch). Off for replays. Default true. */
+  economy?: boolean;
   /**
    * Real office state: verified collaboration events between two snapshots (delegation,
    * task handoff, completion) fly a small paper/card/check between the agents' desks.
@@ -176,6 +179,20 @@ export function OfficeView({ ref, ...p }: Props) {
   }, [p.editMode]);
   useEffect(() => scene.current?.setIdleLife(p.idleLife), [p.idleLife]);
   useEffect(() => scene.current?.setVisitors(settings.visitors), [settings.visitors]);
+  useEffect(() => scene.current?.setEconomy(p.economy !== false && settings.coins ? economy : null), [p.economy, settings.coins]);
+  // The crown goes to the office-wide top earner (same rule as the inspector and the Shop tab).
+  const officeState = useRef(p.collabState);
+  officeState.current = p.collabState;
+  useEffect(() => {
+    const on = p.economy !== false && settings.coins;
+    const tick = () => {
+      const state = officeState.current;
+      scene.current?.setTopEarner(on && state ? topEarner(officeEarnings(state, Date.now())) : undefined);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [p.economy, settings.coins]);
   useEffect(() => scene.current?.setSound(p.sound ?? null), [p.sound]);
   useEffect(() => scene.current?.setOpenTasks(p.openTasks), [p.openTasks]);
   useEffect(() => scene.current?.setAnimationFps(settings.animationFps), [settings.animationFps]);

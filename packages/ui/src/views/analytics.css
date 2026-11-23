@@ -147,9 +147,18 @@
   color: var(--muted);
   z-index: 1;
 }
+/* Numeric cells, not the global .num badge. */
 .an-table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+}
+.an-table td.num {
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
 }
 .an-table .an-name {
   max-width: 320px;

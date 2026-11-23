@@ -1,5 +1,5 @@
 import { createElement, createRef } from 'react';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { agentKeyFor, createInitialState, defaultLayout, normalizeHookPayload, openOfficeLayout, reduce, type OfficeState } from '@agent-office/core';
 import {
@@ -235,6 +235,8 @@ vi.mock('../src/office/scene', () => {
     setEditMode = record('setEditMode');
     setIdleLife = record('setIdleLife');
     setVisitors = record('setVisitors');
+    setEconomy = record('setEconomy');
+    setTopEarner = record('setTopEarner');
     setSound = record('setSound');
     setOpenTasks = record('setOpenTasks');
     setHourOverride = record('setHourOverride');
@@ -406,6 +408,25 @@ describe('OfficeView', () => {
     unmount();
     expect(w.__officeScene).toBe('previous');
     delete w.__officeScene;
+  });
+
+  it('crowns the office-wide top earner (the same rule as the inspector and the Shop tab)', async () => {
+    const { OfficeView } = await import('../src/components/OfficeView');
+    const T = Date.now() - 300_000;
+    let seq = 0;
+    let state = createInitialState();
+    const step = (sid: string, name: string, ts: number, extra: Record<string, unknown> = {}) => {
+      const r = normalizeHookPayload({ session_id: sid, cwd: 'c:\work\app', hook_event_name: name, ...extra }, ts);
+      if (!r.ok) throw new Error(r.error);
+      state = reduce(state, { ...r.event, seq: ++seq });
+    };
+    for (const [sid, workS] of [['short', 30], ['long', 120]] as const) {
+      step(sid, 'SessionStart', T, { source: 'startup' });
+      step(sid, 'UserPromptSubmit', T + 1000);
+      step(sid, 'Stop', T + 1000 + workS * 1000);
+    }
+    render(createElement(OfficeView, { ...baseProps(), collabState: state }));
+    await waitFor(() => expect(called('setTopEarner').at(-1)).toEqual([agentKeyFor('long')]));
   });
 
   it('focuses agents through focusRequest and the ref handle', async () => {

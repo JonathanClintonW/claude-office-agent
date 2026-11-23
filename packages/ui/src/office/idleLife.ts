@@ -1,7 +1,7 @@
 /**
  * "Office life" for idle agents: coffee runs, snacks, reading, noticeboards, whiteboards,
  * watering plants, stretching, short walks, strolls to another department's doorway, sitting
- * in a lounge chair, chats, couch breaks, restroom trips.
+ * in a lounge chair, chats, couch breaks, restroom trips, a game at the arcade cabinet.
  *
  * Purely cosmetic, local and deterministic for an injected RNG; only for actors whose real
  * status allows it (`Actor.idle`). Guarantees:
@@ -48,10 +48,11 @@ export type ActivityKind =
   | 'stretch'
   | 'walk'
   | 'stroll'
-  | 'lounge';
+  | 'lounge'
+  | 'arcade';
 
 /** Activities done at a World spot of the same kind; skipped when the world has none. */
-export const SPOT_ACTIVITIES = ['coffee', 'water', 'snack', 'toilet', 'couch', 'window', 'books', 'board', 'whiteboard', 'plant'] as const satisfies readonly (ActivityKind &
+export const SPOT_ACTIVITIES = ['coffee', 'water', 'snack', 'toilet', 'couch', 'window', 'books', 'board', 'whiteboard', 'plant', 'arcade'] as const satisfies readonly (ActivityKind &
   SpotKind)[];
 
 export const ACTIVITY_KINDS: readonly ActivityKind[] = ['chat', ...SPOT_ACTIVITIES, 'stretch', 'walk', 'stroll', 'lounge'];
@@ -119,6 +120,10 @@ export interface DirectorOptions {
   smallTalkChance?: number;
   /** Local hour (0-23) for time-of-day dialogue. Default: the local clock. */
   hourOf?: (now: number) => number;
+  /** Price in office coins (undefined or 0: free). Read at every start, so the coin game can be switched at runtime. */
+  priceOf?: (kind: ActivityKind) => number | undefined;
+  /** Called once when an actor reaches the spot of a priced activity. */
+  onPaid?: (actorKey: string, kind: ActivityKind, now: number) => void;
 }
 
 export const DEFAULT_DIRECTOR_OPTIONS: DirectorOptions = {
@@ -146,6 +151,7 @@ const DURATION: Record<ActivityKind, [number, number]> = {
   walk: [1_500, 3_000],
   stroll: [3_000, 5_000],
   lounge: [12_000, 25_000],
+  arcade: [12_000, 20_000],
 };
 
 const WEIGHT: Record<ActivityKind, number> = {
@@ -164,6 +170,7 @@ const WEIGHT: Record<ActivityKind, number> = {
   walk: 1.5,
   stroll: 1.5,
   lounge: 1.5,
+  arcade: 2,
 };
 
 const CHAT_ICONS: ChatIcon[] = ['chat_coffee', 'chat_music', 'chat_heart', 'chat_laugh', 'chat_idea', 'chat_dots'];
@@ -180,6 +187,8 @@ const WALK_RANGE: [number, number] = [3, 12];
 const STROLL_MIN = 4;
 /** Walks and strolls: how long each glance lasts while looking around. */
 const LOOK_MS = 1_100;
+/** One arcade round; some end with a bubble. */
+const ARCADE_ROUND_MS = 4_000;
 const SAID_MEMORY = 6;
 
 const key = (p: Point) => `${p.x},${p.y}`;
@@ -379,6 +388,7 @@ export class IdleDirector implements BehaviorProvider {
           act.doAt = now;
           act.doneAt = now + this.between(DURATION[act.kind]);
           act.speech = this.soloLine(a, st, act.kind, now);
+          if (this.o.priceOf?.(act.kind)) this.o.onPaid?.(a.key, act.kind, now);
         }
       }
       if (act.phase === 'do' && act.doneAt !== undefined && now >= act.doneAt) {
@@ -487,6 +497,13 @@ export class IdleDirector implements BehaviorProvider {
       case 'lounge':
         // Sits in a lounge chair; now and then hums along to some music.
         return say({ ...base, pose: 'sit_meeting', bubble: !waiting && t % 9000 > 5000 && t % 9000 < 6400 ? 'chat_music' : undefined });
+      case 'arcade': {
+        // Plays facing the cabinet; at the end of some rounds a win (laugh) or a new idea for the next level.
+        const round = Math.floor(t / ARCADE_ROUND_MS);
+        const end = t % ARCADE_ROUND_MS > ARCADE_ROUND_MS - 1_500;
+        const icon: ChatIcon = (round + Math.floor(act.seed * 3)) % 3 === 2 ? 'chat_idea' : 'chat_laugh';
+        return say({ ...base, pose: 'stand', bubble: !waiting && end && round % 2 === 0 ? icon : undefined });
+      }
     }
   }
 
@@ -603,7 +620,10 @@ export class IdleDirector implements BehaviorProvider {
 
   private start(a: Actor, st: ActorState, now: number, idle: readonly Actor[]): void {
     const cap = this.o.maxPerKind ?? DEFAULT_MAX_PER_KIND;
-    const allowed = (k: ActivityKind) => (!this.o.activities || this.o.activities.includes(k)) && k !== st.lastKind && this.countKind(k) < cap;
+    // Agents only take paid breaks they can afford (a missing balance means the coin game is off).
+    const affordable = (k: ActivityKind) => !this.o.priceOf?.(k) || (a.ctx?.coins ?? Infinity) >= this.o.priceOf(k)!;
+    const allowed = (k: ActivityKind) =>
+      (!this.o.activities || this.o.activities.includes(k)) && k !== st.lastKind && this.countKind(k) < cap && affordable(k);
     const freeSpots = (kind: SpotKind) =>
       this.world.spots.filter((s) => s.kind === kind && !this.reserved.has(`spot:${s.id}`) && this.tileFree(s.at) && this.fits(s.roomId ?? this.roomIdAt(s.at)));
     const chatTiles = allowed('chat')
